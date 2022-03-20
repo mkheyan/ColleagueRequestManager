@@ -23,6 +23,10 @@ namespace DataAccess
         public virtual ApplicationUser Assignee { get; set; }
         
         public virtual ICollection<ToDoAttachment> Attachments { get; set; }
+        [Required]
+        public DateTime CreationDate { get; set; }
+        [Required]
+        public DateTime LastModifiedDate { get; set; }
         public DateTime NecessaryCompletionDate { get; set; }
 
         public bool IsComplete { get; set; } = false;
