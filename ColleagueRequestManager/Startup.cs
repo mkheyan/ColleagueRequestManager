@@ -15,6 +15,7 @@ using DataAccess;
 using ColleagueRequestManager.Service.IService;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Radzen;
 
 namespace ColleagueRequestManager
 {
@@ -39,6 +40,7 @@ namespace ColleagueRequestManager
             services.AddScoped<IDbInitializer, DbInitializer>();
             services.AddRazorPages();
             services.AddServerSideBlazor();
+            services.AddScoped<ContextMenuService>();
             services.AddSingleton<WeatherForecastService>();
         }
 

@@ -12,9 +12,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ColleagueRequestManager</title>
     <base href="~/" />
+    <link rel="stylesheet" href="_content/Radzen.Blazor/css/default-base.css">
+    <link rel="stylesheet" href="_content/Radzen.Blazor/css/default.css">
     <link rel="stylesheet" href="css/bootstrap/bootstrap.min.css" />
     <link href="css/site.css" rel="stylesheet" />
     <link href="ColleagueRequestManager.styles.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet" />
 </head>
 <body>
     <component type="typeof(App)" render-mode="ServerPrerendered" />
@@ -29,7 +32,11 @@
         <a href="" class="reload">Reload</a>
         <a class="dismiss">🗙</a>
     </div>
-
-    <script src="_framework/blazor.server.js"></script>
+    
+<script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="_content/Radzen.Blazor/Radzen.Blazor.js"></script>
+<script src="~/js/common.js"></script>
+<script src="_framework/blazor.server.js"></script>
 </body>
 </html>

@@ -1,0 +1,65 @@
+﻿@page "/usermanager"
+@using DataAccess
+@using Microsoft.AspNetCore.Identity
+@using Radzen
+@using Radzen.Blazor
+@inject NavigationManager navigationManager
+@inject IJSRuntime jsRuntime
+@inject UserManager<ApplicationUser> userManager
+@inject ContextMenuService contextMenuService
+@attribute [Authorize(Roles = Common.SD.Role_Admin)]
+
+<div class="row mt-4">
+    <div class="col-6">
+        <h4 class="card-title text-info">Hotel Amenity</h4>
+    </div>
+    <div class="col-5 offset-1">
+        <NavLink href="@($"usermanager/createuser")" class="btn btn-info form-control">Create New User </NavLink>
+    </div>
+</div>
+<div class="row mt-4">
+    <div class="col-md-12">
+        <RadzenDataGrid AllowFiltering="true" AllowColumnResize="true" FilterMode="FilterMode.Advanced" AllowSorting="true" PageSize="2" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
+                        Data="userManager.Users" TItem="ApplicationUser" ColumnWidth="300px" LogicalFilterOperator="LogicalFilterOperator.Or"
+                        SelectionMode="DataGridSelectionMode.Single" @bind-Value=@selectedUser CellContextMenu="@OnCellContextMenu">
+            <Columns>
+                <RadzenDataGridColumn TItem="ApplicationUser" Property="FirstName" Title="First Name" Width="140px" />
+                <RadzenDataGridColumn TItem="ApplicationUser" Property="LastName" Title="Last Name" Width="140px" />
+                <RadzenDataGridColumn TItem="ApplicationUser" Property="Title" Title="Job Title" Width="200px" />
+                <RadzenDataGridColumn TItem="ApplicationUser" Property="Email" Title="Email" Width="200px" />
+
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+</div>
+
+
+@code {
+
+    IList<ApplicationUser> selectedUser;
+
+    void OnCellContextMenu(DataGridCellMouseEventArgs<ApplicationUser> args)
+    {
+        selectedUser = new List<ApplicationUser>() { args.Data };
+
+        contextMenuService.Open(args,
+            new List<ContextMenuItem> {
+                new ContextMenuItem(){ Text = "Edit", Value = 1 },
+                new ContextMenuItem(){ Text = "Delete", Value = 2 },
+                },
+            (e) =>
+            {
+                if (e.Value.ToString() == "1")
+                {
+                    navigationManager.NavigateTo($"usermanager/edit/{args.Data.Id}");
+                }
+                if (e.Value.ToString() == "2")
+                {
+                    //call delete handler
+                }
+                //Console.WriteLine($"Menu item with Value={e.Value} clicked. Column: {args.Column.Property}, Title: {args.Data.Title}");
+            }
+            );
+    }
+
+}

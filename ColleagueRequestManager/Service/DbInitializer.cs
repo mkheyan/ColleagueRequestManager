@@ -45,6 +45,7 @@ namespace ColleagueRequestManager.Service
                 LastName = "Adminyan",
                 UserName = "admin@gmail.com",
                 Email = "admin@gmail.com",
+                Title = "Admin",
                 EmailConfirmed = true
             },"Admin123*").GetAwaiter().GetResult();
 

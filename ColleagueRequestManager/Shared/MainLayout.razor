@@ -1,4 +1,7 @@
-﻿@inherits LayoutComponentBase
+﻿@using Radzen.Blazor
+@inherits LayoutComponentBase
+
+<RadzenContextMenu />
 
 <div class="page">
     <div class="sidebar">
@@ -7,6 +10,7 @@
 
     <div class="main">
         <div class="top-row px-4">
+            <LoginDisplay></LoginDisplay>
             <a href="https://docs.microsoft.com/aspnet/" target="_blank">About</a>
         </div>
 
