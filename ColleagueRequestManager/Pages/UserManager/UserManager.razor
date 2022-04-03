@@ -3,9 +3,14 @@
 @using Microsoft.AspNetCore.Identity
 @using Radzen
 @using Radzen.Blazor
+@using Business
+@using Business.UserManager
+@using Common
+@inject IUserManager appUserManager
 @inject NavigationManager navigationManager
 @inject IJSRuntime jsRuntime
 @inject UserManager<ApplicationUser> userManager
+@inject RoleManager<IdentityRole> roleManager
 @inject ContextMenuService contextMenuService
 @attribute [Authorize(Roles = Common.SD.Role_Admin)]
 
@@ -19,8 +24,8 @@
 </div>
 <div class="row mt-4">
     <div class="col-md-12">
-        <RadzenDataGrid AllowFiltering="true" AllowColumnResize="true" FilterMode="FilterMode.Advanced" AllowSorting="true" PageSize="2" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
-                        Data="userManager.Users" TItem="ApplicationUser" ColumnWidth="300px" LogicalFilterOperator="LogicalFilterOperator.Or"
+        <RadzenDataGrid @ref="usersGrid" AllowFiltering="true" AllowColumnResize="true" FilterMode="FilterMode.Advanced" AllowSorting="true" PageSize="2" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
+                        Data="displayData" TItem="ApplicationUser" ColumnWidth="300px" LogicalFilterOperator="LogicalFilterOperator.Or"
                         SelectionMode="DataGridSelectionMode.Single" @bind-Value=@selectedUser CellContextMenu="@OnCellContextMenu">
             <Columns>
                 <RadzenDataGridColumn TItem="ApplicationUser" Property="FirstName" Title="First Name" Width="140px" />
@@ -36,9 +41,17 @@
 
 @code {
 
+    RadzenDataGrid<ApplicationUser> usersGrid { get; set; }
     IList<ApplicationUser> selectedUser;
+    IList<ApplicationUser> displayData;
 
-    void OnCellContextMenu(DataGridCellMouseEventArgs<ApplicationUser> args)
+    protected async override Task OnInitializedAsync()
+    {
+        displayData = await userManager.GetUsersInRoleAsync(SD.Role_User);
+        
+    }
+
+    protected async Task OnCellContextMenu(DataGridCellMouseEventArgs<ApplicationUser> args)
     {
         selectedUser = new List<ApplicationUser>() { args.Data };
 
@@ -46,8 +59,7 @@
             new List<ContextMenuItem> {
                 new ContextMenuItem(){ Text = "Edit", Value = 1 },
                 new ContextMenuItem(){ Text = "Delete", Value = 2 },
-                },
-            (e) =>
+                }, async (e) =>
             {
                 if (e.Value.ToString() == "1")
                 {
@@ -55,11 +67,16 @@
                 }
                 if (e.Value.ToString() == "2")
                 {
-                    //call delete handler
+                    appUserManager.DeleteApplicationUser(args.Data.Id);
+                    displayData.Remove(args.Data);
+                    jsRuntime.SwalSuccess("User has been deleted successfully");
+                    await usersGrid.Reload();
+                    
                 }
                 //Console.WriteLine($"Menu item with Value={e.Value} clicked. Column: {args.Column.Property}, Title: {args.Data.Title}");
             }
             );
+        StateHasChanged();
     }
 
 }

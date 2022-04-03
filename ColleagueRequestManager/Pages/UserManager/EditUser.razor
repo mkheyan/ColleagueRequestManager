@@ -1,0 +1,57 @@
+﻿@page "/usermanager/edit/{Id}"
+
+@using DataAccess
+@using ColleagueRequestManager.Models
+@using Common
+@using Business.UserManager
+@using Models
+@inject IUserManager appUserManager
+@inject NavigationManager navigationManager
+@inject IJSRuntime jsRuntime
+@attribute [Authorize(Roles = SD.Role_Admin)]
+<h3>EditUser</h3>
+
+<EditForm Model="ApplicationUserModel" OnValidSubmit="UpdateUser">
+    <div class="form-group">
+        <label>First Name</label>
+        <InputText @bind-Value="ApplicationUserModel.FirstName" class="form-control"></InputText>
+        <ValidationMessage For="() => ApplicationUserModel.FirstName"></ValidationMessage>
+    </div>
+    <div class="form-group">
+        <label>Last Name</label>
+        <InputText @bind-Value="ApplicationUserModel.LastName" class="form-control"></InputText>
+        <ValidationMessage For="() => ApplicationUserModel.LastName"></ValidationMessage>
+    </div>
+    <div class="form-group">
+        <label>Job Title</label>
+        <InputText @bind-Value="ApplicationUserModel.Title" class="form-control"></InputText>
+        <ValidationMessage For="() => ApplicationUserModel.Title"></ValidationMessage>
+    </div>
+    <div class="form-group">
+        <label>Email</label>
+        <InputText @bind-Value="ApplicationUserModel.Email" class="form-control"></InputText>
+        <ValidationMessage For="() => ApplicationUserModel.Email"></ValidationMessage>
+    </div>
+    <div class="form-group">
+        <button class="btn btn-primary">Update User</button>
+    </div>
+</EditForm>
+
+@code {
+    [Parameter]
+    public string Id { get; set; }
+
+    private ApplicationUserModel ApplicationUserModel { get; set; }
+
+    protected async override Task OnInitializedAsync()
+    {
+        ApplicationUserModel = await appUserManager.GetApplicationUser(Id);
+    }
+
+    public async Task UpdateUser()
+    {
+        await appUserManager.EditApplicationUser(ApplicationUserModel.Id,ApplicationUserModel);
+        await jsRuntime.SwalSuccess("User has been updated successfully");
+        navigationManager.NavigateTo("/usermanager");
+    }
+}

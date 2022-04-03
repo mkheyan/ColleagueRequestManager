@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Business.UserManager;
 using ColleagueRequestManager.Service;
 using DataAccess;
 using ColleagueRequestManager.Service.IService;
@@ -39,8 +40,10 @@ namespace ColleagueRequestManager
                 .AddDefaultUI();
             services.AddScoped<IDbInitializer, DbInitializer>();
             services.AddRazorPages();
-            services.AddServerSideBlazor();
+            services.AddScoped<IUserManager, UserManager>();
             services.AddScoped<ContextMenuService>();
+            services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+            services.AddServerSideBlazor();
             services.AddSingleton<WeatherForecastService>();
         }
 
