@@ -22,6 +22,7 @@ namespace Models
         public virtual ApplicationUserModel Assignee { get; set; }
 
         public virtual ICollection<ToDoAttachmentDto> Attachments { get; set; }
+        public virtual ICollection<ToDoResponseDto> Responses { get; set; }
         [Required]
         public DateTime CreationDate { get; set; }
         [Required]

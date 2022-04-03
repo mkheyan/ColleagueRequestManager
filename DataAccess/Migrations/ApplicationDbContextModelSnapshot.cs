@@ -414,7 +414,7 @@ namespace DataAccess.Migrations
                         .HasForeignKey("ResponderId");
 
                     b.HasOne("DataAccess.ToDoItem", "ToDoItem")
-                        .WithMany()
+                        .WithMany("Responses")
                         .HasForeignKey("ToDoItemId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -478,6 +478,8 @@ namespace DataAccess.Migrations
             modelBuilder.Entity("DataAccess.ToDoItem", b =>
                 {
                     b.Navigation("Attachments");
+
+                    b.Navigation("Responses");
                 });
 
             modelBuilder.Entity("DataAccess.ToDoResponse", b =>

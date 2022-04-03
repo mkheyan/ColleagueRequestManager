@@ -23,6 +23,7 @@ namespace DataAccess
         public virtual ApplicationUser Assignee { get; set; }
         
         public virtual ICollection<ToDoAttachment> Attachments { get; set; }
+        public virtual ICollection<ToDoResponse> Responses { get; set; }
         [Required]
         public DateTime CreationDate { get; set; }
         [Required]
