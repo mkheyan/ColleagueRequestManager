@@ -5,10 +5,11 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using ColleagueRequestManager.Models;
 
-namespace DataAccess
+namespace Models
 {
-    public class ToDoItem
+    public class ToDoItemDto
     {
         public int Id { get; set; }
         [Required]
@@ -16,13 +17,11 @@ namespace DataAccess
         [Required]
         public string Description { get; set; }
         public string CreatorId { get; set; }
-        [ForeignKey("CreatorId")]
-        public virtual ApplicationUser Creator { get; set; }
+        public virtual ApplicationUserModel Creator { get; set; }
         public string AssigneeId { get; set; }
-        [ForeignKey("AssigneeId")]
-        public virtual ApplicationUser Assignee { get; set; }
-        
-        public virtual ICollection<ToDoAttachment> Attachments { get; set; }
+        public virtual ApplicationUserModel Assignee { get; set; }
+
+        public virtual ICollection<ToDoAttachmentDto> Attachments { get; set; }
         [Required]
         public DateTime CreationDate { get; set; }
         [Required]
@@ -31,7 +30,5 @@ namespace DataAccess
 
         public bool IsComplete { get; set; } = false;
         public bool IsDeleted { get; set; } = false;
-
-
     }
 }

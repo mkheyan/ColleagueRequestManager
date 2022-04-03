@@ -16,7 +16,7 @@
 
 <div class="row mt-4">
     <div class="col-6">
-        <h4 class="card-title text-info">Hotel Amenity</h4>
+        <h4 class="card-title text-info">User Manager</h4>
     </div>
     <div class="col-5 offset-1">
         <NavLink href="@($"usermanager/createuser")" class="btn btn-info form-control">Create New User </NavLink>
@@ -24,7 +24,7 @@
 </div>
 <div class="row mt-4">
     <div class="col-md-12">
-        <RadzenDataGrid @ref="usersGrid" AllowFiltering="true" AllowColumnResize="true" FilterMode="FilterMode.Advanced" AllowSorting="true" PageSize="2" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
+        <RadzenDataGrid @ref="usersGrid" AllowFiltering="true" AllowColumnResize="true" FilterMode="FilterMode.Advanced" AllowSorting="true" PageSize="4" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
                         Data="displayData" TItem="ApplicationUser" ColumnWidth="300px" LogicalFilterOperator="LogicalFilterOperator.Or"
                         SelectionMode="DataGridSelectionMode.Single" @bind-Value=@selectedUser CellContextMenu="@OnCellContextMenu">
             <Columns>
