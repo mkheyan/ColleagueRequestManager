@@ -25,12 +25,20 @@ namespace Business.Repository
 
         public async Task<ToDoItemDto> CreateToDoItem(ToDoItemDto toDoItemDto)
         {
-            ToDoItem item = _mapper.Map<ToDoItemDto, ToDoItem>(toDoItemDto);
-            item.CreationDate = DateTime.Now;
-            item.LastModifiedDate = DateTime.Now;
-            var addedItem = await _context.ToDoItems.AddAsync(item);
-            await _context.SaveChangesAsync();
-            return _mapper.Map<ToDoItem, ToDoItemDto>(addedItem.Entity);
+            try
+            {
+                ToDoItem item = _mapper.Map<ToDoItemDto, ToDoItem>(toDoItemDto);
+                item.CreationDate = DateTime.Now;
+                item.LastModifiedDate = DateTime.Now;
+                var addedItem = await _context.ToDoItems.AddAsync(item);
+                await _context.SaveChangesAsync();
+                return _mapper.Map<ToDoItem, ToDoItemDto>(addedItem.Entity);
+            }
+            catch (Exception e)
+            {
+                throw new Exception();
+            }
+            
         }
 
         public async Task<int> DeleteToDoItem(int itemId)
@@ -42,6 +50,7 @@ namespace Business.Repository
                 {
                     var allAttachments =
                         await _context.ToDoAttachments.Where(x => x.ToDoItemId == itemId).ToListAsync();
+                    
                     var allResponses = await _context.ToDoResponses.Where(x => x.ToDoItemId == itemId).ToListAsync();
                     _context.ToDoAttachments.RemoveRange(allAttachments);
                     _context.ToDoResponses.RemoveRange(allResponses);

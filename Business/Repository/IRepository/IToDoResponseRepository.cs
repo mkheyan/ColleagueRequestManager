@@ -9,10 +9,10 @@ namespace Business.Repository.IRepository
 {
     public interface IToDoResponseRepository
     {
-        public Task<ToDoResponseDto> CreateToDoResponse(int itemId, ToDoResponseDto toDoResponse);
-        public Task<ToDoResponseDto> UpdateToDoResponse(int responseId, ToDoItemDto toDoItem);
+        public Task<ToDoResponseDto> CreateToDoResponse(int itemId, ToDoResponseDto toDoResponseDto);
+        public Task<ToDoResponseDto> UpdateToDoResponse(int responseId, ToDoResponseDto toDoResponseDto);
         public Task<int> DeleteToDoResponse(int responseId);
         public Task<IEnumerable<ToDoResponseDto>> GetAllToDoResponsesForItem(int itemId);
-        public Task<ToDoItemDto> GetToDoResponse(int responseId);
+        public Task<ToDoResponseDto> GetToDoResponse(int responseId);
     }
 }

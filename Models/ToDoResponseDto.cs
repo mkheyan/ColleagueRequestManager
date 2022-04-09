@@ -15,6 +15,8 @@ namespace Models
         public int Id { get; set; }
         [Required(ErrorMessage = "Please enter a response")]
         public string ResponseText { get; set; }
+        public DateTime CreationDate { get; set; }
+        public DateTime LastModifiedDate { get; set; }
         public string ResponderId { get; set; }
         [Required]
         public virtual ApplicationUserModel Responder { get; set; }

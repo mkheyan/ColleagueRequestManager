@@ -11,6 +11,8 @@ namespace DataAccess
     {
         public int Id { get; set; }
         public string ResponseText { get; set; }
+        public DateTime CreationDate { get; set; }
+        public DateTime LastModifiedDate { get; set; }
         public string ResponderId { get; set; }
         [ForeignKey("ResponderId")]
         public virtual ApplicationUser Responder { get; set; }
