@@ -1,0 +1,94 @@
+﻿@page "/requests"
+@using Models
+@using Business.Repository.IRepository
+@using DataAccess
+@using global::Models
+@using Microsoft.AspNetCore.Components
+@using Radzen
+@using Radzen.Blazor
+@inject IToDoItemRepository toDoItemRepository
+@inject IJSRuntime jsRuntime
+@inject NavigationManager navigationManager
+@inject ContextMenuService contextMenuService
+@attribute [Authorize]
+
+<div class="row mt-4">
+    <div class="col-8">
+        <h4 class="card-title text-info">Requests</h4>
+    </div>
+    <div class="col-3 offset-1">
+        <NavLink href="requests/create" class="btn btn-info form-control">New Request</NavLink>
+    </div>
+</div>
+<div class="row mt-4">
+    <div class="col-md-12">
+        <RadzenDataGrid @ref="itemGrid" AllowFiltering="true" AllowColumnResize="true" FilterMode="FilterMode.Advanced" AllowSorting="true" PageSize="4" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
+                        Data="displayData" TItem="ToDoItemDto" ColumnWidth="300px" LogicalFilterOperator="LogicalFilterOperator.Or"
+                        SelectionMode="DataGridSelectionMode.Single" @bind-Value=@selectedItem CellContextMenu="@OnCellContextMenu">
+            <Columns>
+                <RadzenDataGridColumn TItem="ToDoItemDto" Property="Subject" Title="Subject" Width="140px" />
+                <RadzenDataGridColumn TItem="ToDoItemDto" Context="data" Property="CreatorId" SortProperty="Creator.LastName" Title="Creator" Width="140px">
+                    <Template>
+                        @data.Creator?.FirstName @data.Creator?.LastName
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="ToDoItemDto" Context="data" Property="AssigneeId" SortProperty="Assignee.LastName" Title="Assignee" Width="140px">
+                    <Template>
+                        @data.Assignee?.FirstName @data.Assignee?.LastName
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="ToDoItemDto" Property="CreationDate" Title="Creation Date" Width="200px" />
+                <RadzenDataGridColumn TItem="ToDoItemDto" Property="LastModifiedDate" Title="Last Modified Date" Width="200px" />
+                <RadzenDataGridColumn TItem="ToDoItemDto" Property="NecessaryCompletionDate" Title="Necessary Completion Date" Width="200px" />
+                <RadzenDataGridColumn TItem="ToDoItemDto" Property="IsComplete" Title="Is Complete" Width="200px" />
+
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+</div>
+@code {
+    RadzenDataGrid<ToDoItemDto> itemGrid { get; set; }
+    IList<ToDoItemDto> displayData;
+    IList<ToDoItemDto> selectedItem;
+
+    protected async override Task OnInitializedAsync()
+    {
+        var displayDataResult = await toDoItemRepository.GetAllToDoItems();
+        if (displayDataResult != null)
+        {
+            displayData = displayDataResult.ToList();
+        }
+    }
+
+    protected async Task OnCellContextMenu(DataGridCellMouseEventArgs<ToDoItemDto> args)
+    {
+        selectedItem = new List<ToDoItemDto>() { args.Data };
+
+        contextMenuService.Open(args,
+            new List<ContextMenuItem> {
+                new ContextMenuItem(){Text = "View", Value = 0},
+                new ContextMenuItem(){ Text = "Edit", Value = 1 },
+                new ContextMenuItem(){ Text = "Delete", Value = 2 },
+                }, async (e) =>
+            {
+                if (e.Value.ToString() == "0")
+                {
+                    navigationManager.NavigateTo($"requests/{args.Data.Id}");
+                }
+                if (e.Value.ToString() == "1")
+                {
+                    navigationManager.NavigateTo($"requests/edit/{args.Data.Id}");
+                }
+                if (e.Value.ToString() == "2")
+                {
+                    await toDoItemRepository.DeleteToDoItem(args.Data.Id);
+                    displayData.Remove(args.Data);
+                    await jsRuntime.SwalSuccess("To do item has been deleted successfully");
+                    await itemGrid.Reload();
+
+                }
+            }
+            );
+        StateHasChanged();
+    }
+}

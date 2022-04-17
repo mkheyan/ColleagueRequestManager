@@ -30,6 +30,8 @@ namespace Business.Repository
                 ToDoItem item = _mapper.Map<ToDoItemDto, ToDoItem>(toDoItemDto);
                 item.CreationDate = DateTime.Now;
                 item.LastModifiedDate = DateTime.Now;
+                item.Assignee = null;
+                item.Creator = null;
                 var addedItem = await _context.ToDoItems.AddAsync(item);
                 await _context.SaveChangesAsync();
                 return _mapper.Map<ToDoItem, ToDoItemDto>(addedItem.Entity);
@@ -71,7 +73,8 @@ namespace Business.Repository
             try
             {
                 IEnumerable<ToDoItemDto> itemDtos = _mapper.Map<IEnumerable<ToDoItem>, IEnumerable<ToDoItemDto>>(
-                     _context.ToDoItems.Include(x => x.Attachments).Include(x => x.Responses));
+                     _context.ToDoItems.Include(x => x.Attachments).Include(x => x.Responses)
+                         .Include(x=>x.Creator).Include(x=>x.Assignee).AsNoTracking());
                 return itemDtos;
             }
             catch (Exception e)
@@ -87,6 +90,9 @@ namespace Business.Repository
                 ToDoItemDto item = _mapper.Map<ToDoItem, ToDoItemDto>(await _context.ToDoItems
                     .Include(x => x.Attachments)
                     .Include(x => x.Responses)
+                    .Include(x => x.Creator)
+                    .Include(x => x.Assignee)
+                    .AsNoTracking()
                     .FirstOrDefaultAsync(x => x.Id == itemId));
                 return item;
             }

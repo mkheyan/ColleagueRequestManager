@@ -1,0 +1,321 @@
+﻿@page "/requests/create"
+@page "/requests/edit/{Id:int}"
+@using DataAccess
+@using Common
+@using Microsoft.AspNetCore.Components
+@using Radzen.Blazor
+@using ColleagueRequestManager.Service.IService
+@using global::Models
+@using Radzen
+@using ColleagueRequestManager.Models
+@using Business.Repository.IRepository
+@using Microsoft.AspNetCore.Http
+@using System.Security.Claims
+@using ColleagueRequestManager.Service
+@using Microsoft.EntityFrameworkCore
+@inject Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> userManager
+@inject IJSRuntime jsRuntime
+@inject IFileUpload fileUpload
+@inject IToDoItemRepository toDoItemRepository
+@inject IToDoAttachmentRepository toDoAttachmentRepository
+@inject NavigationManager navigationManager
+@inject IHttpContextAccessor contextAccessor
+
+<div class="row mt-2 mb-5">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row mt-2 mb-5">
+                    <h3 class="card-title text-info mb-3 ml-3">@Title Request</h3>
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <EditForm Model="ToDoItemModel" OnValidSubmit="HandleToDoItemUpsert">
+                                    <DataAnnotationsValidator />
+                                    @*<ValidationSummary/>*@
+                                    <div class="form-group">
+                                        <label>Subject</label>
+                                        <InputText @bind-Value="ToDoItemModel.Subject" class="form-control"></InputText>
+                                        <ValidationMessage For="() => ToDoItemModel.Subject"></ValidationMessage>
+                                    </div>
+                                    <div class="form-group">
+                                        <label> Creator </label>
+                                        <InputText @bind-Value="ToDoItemModel.Creator.FirstName" disabled="true" class="form-control"></InputText>
+                                        <ValidationMessage For="() => ToDoItemModel.Creator.FirstName"></ValidationMessage>
+                                    </div>
+                                    <div class="form-group">
+                                        <InputText @bind-Value="ToDoItemModel.Creator.LastName" disabled="true" class="form-control"></InputText>
+                                        <ValidationMessage For="() => ToDoItemModel.Creator.LastName"></ValidationMessage>
+                                    </div>
+                                    <div class="form-group">
+                                        <InputText @bind-Value="ToDoItemModel.Creator.Email" disabled="true" class="form-control"></InputText>
+                                        <ValidationMessage For="() => ToDoItemModel.Creator.Email"></ValidationMessage>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Assignee</label>
+                                        <RadzenCard>
+                                            <p class="mb-4">Select assignee from the list</p>
+                                            <RadzenDropDownDataGrid TValue="ApplicationUser" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" FilterOperator="StringFilterOperator.StartsWith" AllowVirtualization="true"
+                                                                    AllowFiltering="true" AllowClear="true" Data="users"
+                                                                    Change=@(args => OnChange(args, "DropDownDataGrid with users for assignee selection")) Class="w-100">
+                                                <Columns>
+                                                    <RadzenDropDownDataGridColumn Property="FirstName" Title="First Name" />
+                                                    <RadzenDropDownDataGridColumn Property="LastName" Title="Last Name" />
+                                                    <RadzenDropDownDataGridColumn Property="Email" Title="Email" />
+                                                </Columns>
+                                            </RadzenDropDownDataGrid>
+                                        </RadzenCard>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Creation Date</label>
+                                        <InputDate @bind-Value="ToDoItemModel.CreationDate" disabled="true" class="form-control"></InputDate>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Last Modified Date</label>
+                                        <InputDate @bind-Value="ToDoItemModel.LastModifiedDate" disabled="true" class="form-control"></InputDate>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Necessary Completion Date</label>
+                                        <InputDate @bind-Value="ToDoItemModel.NecessaryCompletionDate" class="form-control"></InputDate>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Is Complete</label>
+                                        <p>@ToDoItemModel.IsComplete</p>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Description</label>
+                                        <div class="col-xl-6">
+                                            <h3>Description</h3>
+                                            <RadzenHtmlEditor @bind-Value="ToDoItemModel.Description" style=" margin-bottom: 1rem;" />
+                                        </div>
+                                    </div>
+                                    <div class="form-group" style="padding-top: 70px;">
+                                        <InputFile OnChange="HandleFileUpload" multiple></InputFile>
+                                        <div class="row">
+                                            @if (IsFileUploadProcessStarted)
+                                            {
+                                                <div class="col-md-12">
+                                                    <span><i></i>Please wait..Images are uploading...</span>
+                                                </div>
+                                            }
+                                            @if (ToDoItemModel.FileUrls != null && ToDoItemModel.FileUrls.Count > 0)
+                                            {
+                                                int serial = 1;
+                                                foreach (var file in ToDoItemModel.FileUrls)
+                                                {
+                                                    <div class="col-md-2 mt-3">
+                                                        <div style="background: url('@file') 50% 50%;">
+                                                            <span>@serial</span>
+                                                        </div>
+                                                        <button type="button" @onclick="(() => DeleteFile(file))" class="btn btn-outline-danger btn-block mt-4">
+                                                            Delete
+                                                        </button>
+                                                    </div>
+
+                                                    serial++;
+                                                }
+                                            }
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <button class="btn btn-primary">@Title Room</button>
+                                        <NavLink href="hotel-room" class="btn btn-secondary">Back to Index</NavLink>
+                                    </div>
+                                </EditForm>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationState { get; set; }
+
+    private ToDoItemDto ToDoItemModel { get; set; } = new ToDoItemDto();
+    private ToDoAttachmentDto ToDoAttachment { get; set; } = new ToDoAttachmentDto();
+    private string Title { get; set; } = "Create";
+    private IList<ApplicationUser> users { get; set; }
+    private bool IsFileUploadProcessStarted { get; set; } = false;
+    private List<string> DeletedFileNames { get; set; } = new List<string>();
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        if (!authenticationState.Result.User.Identity.IsAuthenticated)
+        {
+            var uri = new Uri(navigationManager.Uri);
+            navigationManager.NavigateTo($"/identity/account/login?returnUrl={uri.LocalPath}");
+        }
+        if (Id != null)
+        {
+            //update
+            Title = "Update";
+            ToDoItemModel = await toDoItemRepository.GetToDoItem(Id.Value);
+            if (ToDoItemModel?.Attachments != null)
+            {
+                ToDoItemModel.FileUrls = ToDoItemModel.Attachments.Select(u => u.AttachmentUrl).ToList();
+            }
+
+        }
+        else
+        {
+            //create
+            ToDoItemModel = new ToDoItemDto();
+            var loggedInUser = contextAccessor.HttpContext.User;
+            var loggedInUserId = loggedInUser.FindFirstValue(ClaimTypes.NameIdentifier);
+            var loggedInUserFromDb = await userManager.FindByIdAsync(loggedInUserId);
+            ToDoItemModel.Creator = new ApplicationUserModel()
+                {
+                    Id = loggedInUserId,
+                    FirstName = loggedInUserFromDb.FirstName,
+                    LastName = loggedInUserFromDb.LastName,
+                    Email = loggedInUserFromDb.Email,
+                    Title = loggedInUserFromDb.Title
+
+                };
+            ToDoItemModel.CreatorId = loggedInUserId;
+            ToDoItemModel.CreationDate = DateTime.Now;
+            ToDoItemModel.LastModifiedDate = DateTime.Now;
+        }
+        users = await userManager.GetUsersInRoleAsync(SD.Role_User);
+    }
+
+
+
+    private async Task HandleToDoItemUpsert()
+    {
+        try
+        {
+            if (ToDoItemModel.Id != 0 && Title == "Update")
+            {
+                //update
+                var updateRequestResult = await toDoItemRepository.UpdateToDoItem(ToDoItemModel.Id, ToDoItemModel);
+                if (ToDoItemModel.FileUrls != null && ToDoItemModel.FileUrls.Any() ||
+                    DeletedFileNames != null && DeletedFileNames.Any())
+                {
+                    if (DeletedFileNames != null && DeletedFileNames.Any())
+                    {
+                        foreach (var deletedFileName in DeletedFileNames)
+                        {
+                            var fileName = deletedFileName.Replace($"{navigationManager.BaseUri}Attachments/", "");
+
+                            var result = fileUpload.DeleteFile(fileName);
+                            await toDoAttachmentRepository.DeleteToDoAttachmentByUrl(deletedFileName);
+                        }
+                    }
+                    await AddToDoAttachment(updateRequestResult);
+                }
+                await jsRuntime.SwalSuccess("To do item updated successfully.");
+            }
+            else
+            {
+                //create
+                var createdResult = await toDoItemRepository.CreateToDoItem(ToDoItemModel);
+                await AddToDoAttachment(createdResult);
+                await jsRuntime.SwalSuccess("To do item created successfully.");
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw;
+        }
+
+        navigationManager.NavigateTo("requests");
+    }
+
+    void OnChange(object value, string name)
+    {
+        var user = (ApplicationUser) value;
+        ToDoItemModel.AssigneeId = user.Id;
+    }
+
+    private async Task HandleFileUpload(InputFileChangeEventArgs e)
+    {
+        IsFileUploadProcessStarted = true;
+        try
+        {
+            var files = new List<string>();
+            if (e.GetMultipleFiles().Count > 0)
+            {
+                foreach (var file in e.GetMultipleFiles())
+                {
+                    var uploadedFilePath = await fileUpload.UploadFile(file);
+                    files.Add(uploadedFilePath);
+                }
+
+                if (files.Any())
+                {
+                    if (ToDoItemModel.FileUrls != null && ToDoItemModel.FileUrls.Any())
+                    {
+                        ToDoItemModel.FileUrls.AddRange(files);
+                    }
+                    else
+                    {
+                        ToDoItemModel.FileUrls = new List<string>();
+                        ToDoItemModel.FileUrls.AddRange(files);
+                    }
+                }
+                else
+                {
+                    await jsRuntime.SwalError("File uploading failed");
+                    return;
+                }
+            }
+            IsFileUploadProcessStarted = false;
+        }
+        catch (Exception ex)
+        {
+            await jsRuntime.SwalError(ex.Message);
+        }
+    }
+
+    private async Task DeleteFile(string fileUrl)
+    {
+        try
+        {
+            var fileIndex = ToDoItemModel.FileUrls.FindIndex(x => x == fileUrl);
+            var fileName = fileUrl.Replace($"{navigationManager.BaseUri}Attachments/", "");
+            if (ToDoItemModel.Id == 0 && Title == "Create")
+            {
+                var result = fileUpload.DeleteFile(fileName);
+            }
+            else
+            {
+                //update
+                DeletedFileNames ??= new List<string>();
+                DeletedFileNames.Add(fileUrl);
+            }
+            ToDoItemModel.FileUrls.RemoveAt(fileIndex);
+
+        }
+        catch (Exception e)
+        {
+            await jsRuntime.SwalError(e.Message);
+        }
+    }
+
+    private async Task AddToDoAttachment(ToDoItemDto itemDetails)
+    {
+        foreach (var fileUrl in ToDoItemModel.FileUrls)
+        {
+            if (ToDoItemModel.Attachments == null || ToDoItemModel.Attachments.Where(x => x.AttachmentUrl == fileUrl).Count() == 0)
+            {
+
+                ToDoAttachment = new ToDoAttachmentDto()
+                {
+                    ToDoItemId = itemDetails.Id,
+                    AttachmentUrl = fileUrl
+                };
+                await toDoAttachmentRepository.AddToDoAttachment(ToDoAttachment);
+            }
+        }
+    }
+
+}

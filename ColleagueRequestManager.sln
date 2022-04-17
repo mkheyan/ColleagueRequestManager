@@ -11,7 +11,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DataAccess", "DataAccess\Da
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Common", "Common\Common.csproj", "{70E080EE-7F16-4470-8334-16B3AC8D3F98}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Models", "Models\Models.csproj", "{0325DD4F-087E-4EE2-B799-F96895C4470E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Models", "Models\Models.csproj", "{0325DD4F-087E-4EE2-B799-F96895C4470E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace DataAccess
 {
@@ -20,6 +21,5 @@ namespace DataAccess
         public DbSet<ToDoResponse> ToDoResponses { get; set; }
         public DbSet<ToDoAttachment> ToDoAttachments { get; set; }
         public DbSet<ToDoHistory> ToDoHistory { get; set; }
-
     }
 }

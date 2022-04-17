@@ -10,6 +10,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Business.Repository;
+using Business.Repository.IRepository;
 using Business.UserManager;
 using ColleagueRequestManager.Service;
 using DataAccess;
@@ -39,10 +41,16 @@ namespace ColleagueRequestManager
                 .AddEntityFrameworkStores<ApplicationDbContext>().AddDefaultTokenProviders()
                 .AddDefaultUI();
             services.AddScoped<IDbInitializer, DbInitializer>();
-            services.AddRazorPages();
             services.AddScoped<IUserManager, UserManager>();
+            services.AddScoped<IFileUpload,FileUpload>();
+            services.AddScoped<IToDoItemRepository, ToDoItemRepository>();
+            services.AddScoped<IToDoAttachmentRepository, ToDoAttachmentRepository>();
             services.AddScoped<ContextMenuService>();
             services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+            services.AddHttpContextAccessor();
+            services.AddScoped<DialogService>();
+            services.AddScoped<NotificationService>();
+            services.AddRazorPages();
             services.AddServerSideBlazor();
             services.AddSingleton<WeatherForecastService>();
         }

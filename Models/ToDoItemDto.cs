@@ -17,11 +17,12 @@ namespace Models
         [Required]
         public string Description { get; set; }
         public string CreatorId { get; set; }
-        public virtual ApplicationUserModel Creator { get; set; }
+        public virtual ApplicationUserModel Creator { get; set; } = new ApplicationUserModel();
         public string AssigneeId { get; set; }
         public virtual ApplicationUserModel Assignee { get; set; }
 
         public virtual ICollection<ToDoAttachmentDto> Attachments { get; set; }
+        public virtual List<string> FileUrls { get; set; }
         public virtual ICollection<ToDoResponseDto> Responses { get; set; }
         [Required]
         public DateTime CreationDate { get; set; }
