@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using Models;
 
 namespace ColleagueRequestManager.Service
 {
@@ -20,10 +21,12 @@ namespace ColleagueRequestManager.Service
             _webHostEnvironment = webHostEnvironment;
             _configuration = configuration;
         }
-        public async Task<string> UploadFile(IBrowserFile file)
+        public async Task<FileModel> UploadFile(IBrowserFile file)
         {
             try
             {
+                FileModel fileModel = new FileModel();
+                fileModel.Name = file.Name;
                 FileInfo fileInfo = new FileInfo(file.Name);
                 var fileName = Guid.NewGuid().ToString() + fileInfo.Extension;
                 var folderDirectory = $"{_webHostEnvironment.WebRootPath}\\Attachments";
@@ -45,7 +48,8 @@ namespace ColleagueRequestManager.Service
                 var url =
                     $"{_configuration.GetValue<string>("ServerUrl")}";
                 var fullPath = $"{url}Attachments/{fileName}";
-                return fullPath;
+                fileModel.FullPath = fullPath;
+                return fileModel;
 
             }
             catch (Exception e)

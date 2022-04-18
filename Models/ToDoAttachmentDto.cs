@@ -17,5 +17,7 @@ namespace Models
         public virtual ToDoResponseDto ToDoResponse { get; set; }
         public string UploaderId { get; set; }
         public virtual ApplicationUserModel Uploader { get; set; }
+
+        public string OriginalName { get; set; }
     }
 }

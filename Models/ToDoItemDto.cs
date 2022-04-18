@@ -19,7 +19,7 @@ namespace Models
         public string CreatorId { get; set; }
         public virtual ApplicationUserModel Creator { get; set; } = new ApplicationUserModel();
         public string AssigneeId { get; set; }
-        public virtual ApplicationUserModel Assignee { get; set; }
+        public virtual ApplicationUserModel Assignee { get; set; } = new ApplicationUserModel();
 
         public virtual ICollection<ToDoAttachmentDto> Attachments { get; set; }
         public virtual List<string> FileUrls { get; set; }

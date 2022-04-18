@@ -118,8 +118,8 @@
                                         </div>
                                     </div>
                                     <div class="form-group">
-                                        <button class="btn btn-primary">@Title Room</button>
-                                        <NavLink href="hotel-room" class="btn btn-secondary">Back to Index</NavLink>
+                                        <button class="btn btn-primary">@Title Request</button>
+                                        <NavLink href="requests" class="btn btn-secondary">Back</NavLink>
                                     </div>
                                 </EditForm>
                             </div>
@@ -143,6 +143,7 @@
     private IList<ApplicationUser> users { get; set; }
     private bool IsFileUploadProcessStarted { get; set; } = false;
     private List<string> DeletedFileNames { get; set; } = new List<string>();
+    private List<FileModel> FileModels { get; set; } = new List<FileModel>();
 
     protected override async Task OnInitializedAsync()
     {
@@ -246,8 +247,9 @@
             {
                 foreach (var file in e.GetMultipleFiles())
                 {
-                    var uploadedFilePath = await fileUpload.UploadFile(file);
-                    files.Add(uploadedFilePath);
+                    FileModel fileModel = await fileUpload.UploadFile(file);
+                    files.Add(fileModel.FullPath);
+                    FileModels.Add(fileModel);
                 }
 
                 if (files.Any())
@@ -311,7 +313,8 @@
                 ToDoAttachment = new ToDoAttachmentDto()
                 {
                     ToDoItemId = itemDetails.Id,
-                    AttachmentUrl = fileUrl
+                    AttachmentUrl = fileUrl,
+                    OriginalName = FileModels.First(x=>x.FullPath == fileUrl).Name
                 };
                 await toDoAttachmentRepository.AddToDoAttachment(ToDoAttachment);
             }

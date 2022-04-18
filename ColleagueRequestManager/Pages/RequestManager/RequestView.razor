@@ -1,0 +1,128 @@
+﻿@page "/requests/{Id:int}"
+@using global::Models
+@using Business.Repository.IRepository
+@using System.IO
+@using Radzen.Blazor
+
+@inject IToDoItemRepository toDoItemRepository
+@inject NavigationManager navigationManager
+
+<div class="row mt-4">
+    <div class="col-6">
+        <h2 class="card-title text-info">View Request</h2>
+    </div>
+    <div class="col-5 offset-1">
+        <NavLink href="@($"requests/edit/{Id}")" class="btn btn-info form-control">Edit</NavLink>
+    </div>
+</div>
+
+<div class="row mt-2 mb-5">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row mt-2 mb-5">
+                    <h3 class="card-title text-info mb-3 ml-3">Request Details</h3>
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <EditForm Model="ToDoItemModel">
+                                    <div class="form-group">
+                                        <label>Subject</label>
+                                        <InputText @bind-Value="ToDoItemModel.Subject" disabled="true" class="form-control"></InputText>
+                                    </div>
+                                    <div class="form-group">
+                                        <label> Creator </label>
+                                        <InputText @bind-Value="ToDoItemModel.Creator.FirstName" disabled="true" class="form-control"></InputText>
+                                    </div>
+                                    <div class="form-group">
+                                        <InputText @bind-Value="ToDoItemModel.Creator.LastName" disabled="true" class="form-control"></InputText>
+                                    </div>
+                                    <div class="form-group">
+                                        <InputText @bind-Value="ToDoItemModel.Creator.Email" disabled="true" class="form-control"></InputText>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Assignee</label>
+                                        @if (ToDoItemModel.Assignee != null)
+                                        {
+                                            <InputText @bind-Value="ToDoItemModel.Assignee.Email" disabled="true" class="form-control"></InputText>
+                                        }
+                                        else
+                                        {
+                                            <InputText disabled="true" @bind-Value="noAssignee" class="form-control"></InputText>
+                                        }
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Creation Date</label>
+                                        <InputDate @bind-Value="ToDoItemModel.CreationDate" disabled="true" class="form-control"></InputDate>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Last Modified Date</label>
+                                        <InputDate @bind-Value="ToDoItemModel.LastModifiedDate" disabled="true" class="form-control"></InputDate>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Necessary Completion Date</label>
+                                        <InputDate @bind-Value="ToDoItemModel.NecessaryCompletionDate" disabled="true" class="form-control"></InputDate>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Is Complete</label>
+                                        <p>@ToDoItemModel.IsComplete</p>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Description</label>
+                                        <div class="col-xl-6">
+                                            <h3>Description</h3>
+                                            <InputText @bind-Value="ToDoItemModel.Description" disabled="true" class="form-control"></InputText>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="form-group" style="padding-top: 70px;">
+                                        <div class="row">
+                                            @if (ToDoItemModel.Attachments != null && ToDoItemModel.Attachments.Count > 0)
+                                            {
+                                                int serial = 1;
+                                                foreach (var file in ToDoItemModel.Attachments)
+                                                {
+                                                    var url = file.AttachmentUrl;
+                                                    <RadzenIcon Icon="description" />
+                                                    <NavLink href="@url">@file.OriginalName</NavLink>
+                                                    
+                                                    serial++;
+                                                }
+                                            }
+                                        </div>
+                                    </div>
+                                </EditForm>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mt-2 mb-5">
+                    <h3 class="card-title text-info mb-3 ml-3">Responses</h3>
+                    
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mt-2 mb-5">
+                    <h3 class="card-title text-info mb-3 ml-3">History</h3>
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private ToDoItemDto ToDoItemModel { get; set; } = new ToDoItemDto();
+    private string noAssignee = "This item does not have an assignee";
+
+    protected override async Task OnInitializedAsync()
+    {
+        ToDoItemModel = await toDoItemRepository.GetToDoItem(Id);
+    }
+
+}

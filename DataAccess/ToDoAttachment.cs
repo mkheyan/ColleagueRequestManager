@@ -20,6 +20,8 @@ namespace DataAccess
         public string UploaderId { get; set; }
         [ForeignKey("UploaderId")]
         public virtual ApplicationUser Uploader { get; set; }
+
+        public string OriginalName { get; set; }
             
     }
 }

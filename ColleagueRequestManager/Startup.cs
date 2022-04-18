@@ -70,11 +70,21 @@ namespace ColleagueRequestManager
             }
 
             app.UseHttpsRedirection();
-            app.UseStaticFiles();
+            
 
             app.UseRouting();
             app.UseAuthentication();
             app.UseAuthorization();
+            app.UseStaticFiles(new StaticFileOptions()
+            {
+                OnPrepareResponse = (context) =>
+                {
+                    if (!context.Context.User.Identity.IsAuthenticated && context.Context.Request.Path.StartsWithSegments("/Attachments"))
+                    {
+                        throw new Exception("Not authenticated");
+                    }
+                }
+            });
             dbInitializer.Initialize();
 
             app.UseEndpoints(endpoints =>
