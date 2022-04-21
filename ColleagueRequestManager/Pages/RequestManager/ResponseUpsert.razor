@@ -1,0 +1,277 @@
+﻿@page "/requests/{requestId:int}/createResponse"
+@page "/requests/{requestId:int}/editResponse/{responseId:int}"
+@using global::Models
+@using Microsoft.AspNetCore.Components
+@using Radzen
+@using Radzen.Blazor
+@using DataAccess
+@using Business.Repository.IRepository
+@using ColleagueRequestManager.Models
+@using System.Security.Claims
+@using ColleagueRequestManager.Service.IService
+@using Microsoft.AspNetCore.Http
+@inject NavigationManager navigationManager
+@inject IToDoResponseRepository toDoResponseRepository
+@inject IHttpContextAccessor contextAccessor
+@inject Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> userManager
+@inject IJSRuntime jsRuntime
+@inject IFileUpload fileUpload
+@inject IToDoAttachmentRepository toDoAttachmentRepository
+
+
+<div class="row mt-2 mb-5">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row mt-2 mb-5">
+                    <h3 class="card-title text-info mb-3 ml-3">@Title Response</h3>
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <EditForm Model="ToDoResponseModel" OnValidSubmit="HandleToDoResponseUpsert">
+                                    <DataAnnotationsValidator />
+                                    <ValidationSummary/>
+                                    <div class="form-group">
+                                        <label>Creation Date</label>
+                                        <InputDate @bind-Value="ToDoResponseModel.CreationDate" disabled="true" class="form-control"></InputDate>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Last Modified Date</label>
+                                        <InputDate @bind-Value="ToDoResponseModel.LastModifiedDate" disabled="true" class="form-control"></InputDate>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Description</label>
+                                        <div class="col-xl-6">
+                                            <h3>Description</h3>
+                                            <RadzenHtmlEditor @bind-Value="ToDoResponseModel.ResponseText" style=" margin-bottom: 1rem;" />
+                                            <ValidationMessage For="() => ToDoResponseModel.ResponseText"></ValidationMessage>
+                                        </div>
+                                    </div>
+                                    <div class="form-group" style="padding-top: 70px;">
+                                        <InputFile OnChange="HandleFileUpload" multiple></InputFile>
+                                        <div class="row">
+                                            @if (IsFileUploadProcessStarted)
+                                            {
+                                                <div class="col-md-12">
+                                                    <span><i></i>Please wait..Images are uploading...</span>
+                                                </div>
+                                            }
+                                            @if (ToDoResponseModel.FileUrls != null && ToDoResponseModel.FileUrls.Count > 0)
+                                            {
+                                                int serial = 1;
+                                                foreach (var file in ToDoResponseModel.FileUrls)
+                                                {
+                                                    <div class="col-md-2 mt-3">
+                                                        <div style="background: 50% 50%;">
+                                                            <span>@serial</span>
+                                                            <img src="file.png" width="64" height="64"/>
+                                                        </div>
+                                                        <button type="button" @onclick="(() => DeleteFile(file))" class="btn btn-outline-danger btn-block mt-4">
+                                                            Delete
+                                                        </button>
+                                                    </div>
+
+                                                    serial++;
+                                                }
+                                            }
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <button class="btn btn-primary" type="submit">@Title Response</button>
+                                        <NavLink href="@($"requests/{requestId}")" class="btn btn-secondary">Back to Request</NavLink>
+                                    </div>
+                                </EditForm>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@code {
+    [Parameter]
+    public int requestId { get; set; }
+    [Parameter]
+    public int? responseId { get; set; }
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationState { get; set; }
+
+    private ToDoResponseDto ToDoResponseModel { get; set; } = new ToDoResponseDto();
+    private ToDoAttachmentDto ToDoAttachment { get; set; } = new ToDoAttachmentDto();
+    private string Title { get; set; } = "Create";
+    private bool IsFileUploadProcessStarted { get; set; } = false;
+    private List<string> DeletedFileNames { get; set; } = new List<string>();
+    private List<FileModel> FileModels { get; set; } = new List<FileModel>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!authenticationState.Result.User.Identity.IsAuthenticated)
+        {
+            var uri = new Uri(navigationManager.Uri);
+            navigationManager.NavigateTo($"/identity/account/login?returnUrl={uri.LocalPath}");
+        }
+        if (responseId != null)
+        {
+    //update
+            Title = "Update";
+            ToDoResponseModel = await toDoResponseRepository.GetToDoResponse(responseId.Value);
+            if (ToDoResponseModel?.Attachments != null)
+            {
+                ToDoResponseModel.FileUrls = ToDoResponseModel.Attachments.Select(u => u.AttachmentUrl).ToList();
+            }
+
+        }
+        else
+        {
+    //create
+            ToDoResponseModel = new ToDoResponseDto();
+            var loggedInUser = contextAccessor.HttpContext.User;
+            var loggedInUserId = loggedInUser.FindFirstValue(ClaimTypes.NameIdentifier);
+            var loggedInUserFromDb = await userManager.FindByIdAsync(loggedInUserId);
+            ToDoResponseModel.Responder = new ApplicationUserModel()
+            {
+                Id = loggedInUserId,
+                FirstName = loggedInUserFromDb.FirstName,
+                LastName = loggedInUserFromDb.LastName,
+                Email = loggedInUserFromDb.Email,
+                Title = loggedInUserFromDb.Title
+
+            };
+            ToDoResponseModel.ResponderId = loggedInUserId;
+            ToDoResponseModel.CreationDate = DateTime.Now;
+            ToDoResponseModel.LastModifiedDate = DateTime.Now;
+            ToDoResponseModel.FileUrls = new List<string>();
+        }
+    }
+
+
+    private async Task HandleToDoResponseUpsert()
+    {
+        try
+        {
+            if (ToDoResponseModel.Id != 0 && Title == "Update")
+            {
+    //update
+                var updateResponseResult = await toDoResponseRepository.UpdateToDoResponse(ToDoResponseModel.Id, ToDoResponseModel);
+                if (ToDoResponseModel.FileUrls != null && ToDoResponseModel.FileUrls.Any() ||
+                    DeletedFileNames != null && DeletedFileNames.Any())
+                {
+                    if (DeletedFileNames != null && DeletedFileNames.Any())
+                    {
+                        foreach (var deletedFileName in DeletedFileNames)
+                        {
+                            var fileName = deletedFileName.Replace($"{navigationManager.BaseUri}Attachments/", "");
+
+                            var result = fileUpload.DeleteFile(fileName);
+                            await toDoAttachmentRepository.DeleteToDoAttachmentByUrl(deletedFileName);
+                        }
+                    }
+                    await AddToDoAttachment(updateResponseResult);
+                }
+                await jsRuntime.SwalSuccess("To do response updated successfully.");
+            }
+            else
+            {
+    //create
+                var createdResult = await toDoResponseRepository.CreateToDoResponse(requestId, ToDoResponseModel);
+                await AddToDoAttachment(createdResult);
+                await jsRuntime.SwalSuccess("To do response created successfully.");
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw;
+        }
+
+        navigationManager.NavigateTo($"requests/{requestId}");
+    }
+
+    private async Task AddToDoAttachment(ToDoResponseDto responseDetails)
+    {
+        foreach (var fileUrl in ToDoResponseModel.FileUrls)
+        {
+            if (ToDoResponseModel.Attachments == null || ToDoResponseModel.Attachments.Where(x => x.AttachmentUrl == fileUrl).Count() == 0)
+            {
+
+                ToDoAttachment = new ToDoAttachmentDto()
+                {
+                    ToDoItemId = responseDetails.ToDoItemId,
+                    ResponseId = responseDetails.Id,
+                    AttachmentUrl = fileUrl,
+                    OriginalName = FileModels.First(x=>x.FullPath == fileUrl).Name
+                };
+                await toDoAttachmentRepository.AddToDoAttachment(ToDoAttachment);
+            }
+        }
+    }
+
+    private async Task HandleFileUpload(InputFileChangeEventArgs e)
+    {
+        IsFileUploadProcessStarted = true;
+        try
+        {
+            var files = new List<string>();
+            if (e.GetMultipleFiles().Count > 0)
+            {
+                foreach (var file in e.GetMultipleFiles())
+                {
+                    FileModel fileModel = await fileUpload.UploadFile(file);
+                    files.Add(fileModel.FullPath);
+                    FileModels.Add(fileModel);
+                }
+
+                if (files.Any())
+                {
+                    if (ToDoResponseModel.FileUrls != null && ToDoResponseModel.FileUrls.Any())
+                    {
+                        ToDoResponseModel.FileUrls.AddRange(files);
+                    }
+                    else
+                    {
+                        ToDoResponseModel.FileUrls = new List<string>();
+                        ToDoResponseModel.FileUrls.AddRange(files);
+                    }
+                }
+                else
+                {
+                    await jsRuntime.SwalError("File uploading failed");
+                    return;
+                }
+            }
+            IsFileUploadProcessStarted = false;
+        }
+        catch (Exception ex)
+        {
+            await jsRuntime.SwalError(ex.Message);
+        }
+    }
+
+    private async Task DeleteFile(string fileUrl)
+    {
+        try
+        {
+            var fileIndex = ToDoResponseModel.FileUrls.FindIndex(x => x == fileUrl);
+            var fileName = fileUrl.Replace($"{navigationManager.BaseUri}Attachments/", "");
+            if (ToDoResponseModel.Id == 0 && Title == "Create")
+            {
+                var result = fileUpload.DeleteFile(fileName);
+            }
+            else
+            {
+    //update
+                DeletedFileNames ??= new List<string>();
+                DeletedFileNames.Add(fileUrl);
+            }
+            ToDoResponseModel.FileUrls.RemoveAt(fileIndex);
+
+        }
+        catch (Exception e)
+        {
+            await jsRuntime.SwalError(e.Message);
+        }
+    }
+}

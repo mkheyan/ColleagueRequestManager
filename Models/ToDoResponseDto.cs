@@ -20,9 +20,10 @@ namespace Models
         public string ResponderId { get; set; }
         [Required]
         public virtual ApplicationUserModel Responder { get; set; }
-        public int ToDoItemId { get; set; }
         [Required]
+        public int ToDoItemId { get; set; }
         public virtual ToDoItemDto ToDoItem { get; set; }
         public virtual ICollection<ToDoAttachmentDto> Attachments { get; set; }
+        public virtual List<string> FileUrls { get; set; }
     }
 }

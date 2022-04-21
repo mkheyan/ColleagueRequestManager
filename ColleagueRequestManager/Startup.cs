@@ -45,6 +45,7 @@ namespace ColleagueRequestManager
             services.AddScoped<IFileUpload,FileUpload>();
             services.AddScoped<IToDoItemRepository, ToDoItemRepository>();
             services.AddScoped<IToDoAttachmentRepository, ToDoAttachmentRepository>();
+            services.AddScoped<IToDoResponseRepository, ToDoResponseRepository>();
             services.AddScoped<ContextMenuService>();
             services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
             services.AddHttpContextAccessor();
@@ -85,6 +86,7 @@ namespace ColleagueRequestManager
                     }
                 }
             });
+            app.UseStaticFiles();
             dbInitializer.Initialize();
 
             app.UseEndpoints(endpoints =>

@@ -74,6 +74,7 @@
                 if (e.Value.ToString() == "0")
                 {
                     navigationManager.NavigateTo($"requests/{args.Data.Id}");
+                    contextMenuService.Close();
                 }
                 if (e.Value.ToString() == "1")
                 {

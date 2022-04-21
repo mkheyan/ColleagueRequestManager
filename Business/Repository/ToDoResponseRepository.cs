@@ -30,6 +30,7 @@ namespace Business.Repository
                 response.CreationDate = DateTime.Now;
                 response.LastModifiedDate = DateTime.Now;
                 response.ToDoItemId = itemId;
+                response.Responder = null;
                 var addedResponse = await _context.ToDoResponses.AddAsync(response);
                 await _context.SaveChangesAsync();
                 return _mapper.Map<ToDoResponse, ToDoResponseDto>(addedResponse.Entity);
