@@ -79,6 +79,7 @@
                 if (e.Value.ToString() == "1")
                 {
                     navigationManager.NavigateTo($"requests/edit/{args.Data.Id}");
+                    contextMenuService.Close();
                 }
                 if (e.Value.ToString() == "2")
                 {

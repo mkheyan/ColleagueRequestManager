@@ -17,8 +17,8 @@ namespace Models
         public string ResponseText { get; set; }
         public DateTime CreationDate { get; set; }
         public DateTime LastModifiedDate { get; set; }
-        public string ResponderId { get; set; }
         [Required]
+        public string ResponderId { get; set; }
         public virtual ApplicationUserModel Responder { get; set; }
         [Required]
         public int ToDoItemId { get; set; }

@@ -19,6 +19,7 @@
 @inject IToDoAttachmentRepository toDoAttachmentRepository
 
 
+
 <div class="row mt-2 mb-5">
     <div class="col-md-12">
         <div class="card">
@@ -30,7 +31,7 @@
                             <div class="card-body">
                                 <EditForm Model="ToDoResponseModel" OnValidSubmit="HandleToDoResponseUpsert">
                                     <DataAnnotationsValidator />
-                                    <ValidationSummary/>
+                                    <ValidationSummary />
                                     <div class="form-group">
                                         <label>Creation Date</label>
                                         <InputDate @bind-Value="ToDoResponseModel.CreationDate" disabled="true" class="form-control"></InputDate>
@@ -42,8 +43,8 @@
                                     <div class="form-group">
                                         <label>Description</label>
                                         <div class="col-xl-6">
-                                            <h3>Description</h3>
-                                            <RadzenHtmlEditor @bind-Value="ToDoResponseModel.ResponseText" style=" margin-bottom: 1rem;" />
+                                            <h3>Response Text</h3>
+                                            <RadzenHtmlEditor @bind-Value="ToDoResponseModel.ResponseText" style="margin-bottom: 1rem;" />
                                             <ValidationMessage For="() => ToDoResponseModel.ResponseText"></ValidationMessage>
                                         </div>
                                     </div>
@@ -64,7 +65,7 @@
                                                     <div class="col-md-2 mt-3">
                                                         <div style="background: 50% 50%;">
                                                             <span>@serial</span>
-                                                            <img src="file.png" width="64" height="64"/>
+                                                            <img src="file.png" width="64" height="64" />
                                                         </div>
                                                         <button type="button" @onclick="(() => DeleteFile(file))" class="btn btn-outline-danger btn-block mt-4">
                                                             Delete
@@ -115,7 +116,7 @@
         }
         if (responseId != null)
         {
-    //update
+            //update
             Title = "Update";
             ToDoResponseModel = await toDoResponseRepository.GetToDoResponse(responseId.Value);
             if (ToDoResponseModel?.Attachments != null)
@@ -126,20 +127,20 @@
         }
         else
         {
-    //create
+            //create
             ToDoResponseModel = new ToDoResponseDto();
             var loggedInUser = contextAccessor.HttpContext.User;
             var loggedInUserId = loggedInUser.FindFirstValue(ClaimTypes.NameIdentifier);
             var loggedInUserFromDb = await userManager.FindByIdAsync(loggedInUserId);
             ToDoResponseModel.Responder = new ApplicationUserModel()
-            {
-                Id = loggedInUserId,
-                FirstName = loggedInUserFromDb.FirstName,
-                LastName = loggedInUserFromDb.LastName,
-                Email = loggedInUserFromDb.Email,
-                Title = loggedInUserFromDb.Title
+                {
+                    Id = loggedInUserId,
+                    FirstName = loggedInUserFromDb.FirstName,
+                    LastName = loggedInUserFromDb.LastName,
+                    Email = loggedInUserFromDb.Email,
+                    Title = loggedInUserFromDb.Title
 
-            };
+                };
             ToDoResponseModel.ResponderId = loggedInUserId;
             ToDoResponseModel.CreationDate = DateTime.Now;
             ToDoResponseModel.LastModifiedDate = DateTime.Now;
@@ -154,7 +155,7 @@
         {
             if (ToDoResponseModel.Id != 0 && Title == "Update")
             {
-    //update
+                //update
                 var updateResponseResult = await toDoResponseRepository.UpdateToDoResponse(ToDoResponseModel.Id, ToDoResponseModel);
                 if (ToDoResponseModel.FileUrls != null && ToDoResponseModel.FileUrls.Any() ||
                     DeletedFileNames != null && DeletedFileNames.Any())
@@ -175,7 +176,7 @@
             }
             else
             {
-    //create
+                //create
                 var createdResult = await toDoResponseRepository.CreateToDoResponse(requestId, ToDoResponseModel);
                 await AddToDoAttachment(createdResult);
                 await jsRuntime.SwalSuccess("To do response created successfully.");
@@ -198,12 +199,12 @@
             {
 
                 ToDoAttachment = new ToDoAttachmentDto()
-                {
-                    ToDoItemId = responseDetails.ToDoItemId,
-                    ResponseId = responseDetails.Id,
-                    AttachmentUrl = fileUrl,
-                    OriginalName = FileModels.First(x=>x.FullPath == fileUrl).Name
-                };
+                    {
+                        ToDoItemId = responseDetails.ToDoItemId,
+                        ResponseId = responseDetails.Id,
+                        AttachmentUrl = fileUrl,
+                        OriginalName = FileModels.First(x => x.FullPath == fileUrl).Name
+                    };
                 await toDoAttachmentRepository.AddToDoAttachment(ToDoAttachment);
             }
         }
@@ -262,7 +263,7 @@
             }
             else
             {
-    //update
+                //update
                 DeletedFileNames ??= new List<string>();
                 DeletedFileNames.Add(fileUrl);
             }

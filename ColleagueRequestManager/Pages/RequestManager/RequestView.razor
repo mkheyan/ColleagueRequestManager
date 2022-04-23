@@ -2,10 +2,13 @@
 @using global::Models
 @using Business.Repository.IRepository
 @using System.IO
+@using Radzen
 @using Radzen.Blazor
 
 @inject IToDoItemRepository toDoItemRepository
+@inject IToDoResponseRepository toDoResponseRepository
 @inject NavigationManager navigationManager
+@inject ContextMenuService contextMenuService
 
 <div class="row mt-4">
     <div class="col-6">
@@ -65,16 +68,17 @@
                                     </div>
                                     <div class="form-group">
                                         <label>Is Complete</label>
-                                        <p>@ToDoItemModel.IsComplete</p>
+                                        <RadzenCheckBox @bind-Value=@ToDoItemModel.IsComplete TValue="bool" Disabled="true"/>
                                     </div>
                                     <div class="form-group">
                                         <label>Description</label>
                                         <div class="col-xl-6">
-                                            <h3>Description</h3>
-                                            <InputText @bind-Value="ToDoItemModel.Description" disabled="true" class="form-control"></InputText>
+                                            <div class="border" style="box-shadow: azure">
+                                                @((MarkupString)ToDoItemModel.Description)
+                                            </div>
                                         </div>
                                     </div>
-                                    
+
                                     <div class="form-group" style="padding-top: 70px;">
                                         <div class="row">
                                             @if (ToDoItemModel.Attachments != null && ToDoItemModel.Attachments.Count > 0)
@@ -85,7 +89,8 @@
                                                     var url = file.AttachmentUrl;
                                                     <RadzenIcon Icon="description" />
                                                     <NavLink href="@url">@file.OriginalName</NavLink>
-                                                    
+                                                    <br/>
+
                                                     serial++;
                                                 }
                                             }
@@ -97,16 +102,34 @@
                     </div>
                 </div>
             </div>
+
             <div class="card-body">
                 <div class="row mt-2 mb-5">
                     <h3 class="card-title text-info mb-3 ml-3">Responses</h3>
-                    
+                    <RadzenDataGrid @ref="responseGrid" AllowFiltering="true" AllowColumnResize="true" FilterMode="FilterMode.Advanced" AllowSorting="true" PageSize="4" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
+                                    Data="displayResponseData" TItem="ToDoResponseDto" ColumnWidth="300px" LogicalFilterOperator="LogicalFilterOperator.Or"
+                                    SelectionMode="DataGridSelectionMode.Single" @bind-Value=@selectedResponse CellContextMenu="@OnCellContextMenu">
+                        <Columns>
+                            <RadzenDataGridColumn TItem="ToDoResponseDto" Context="data" Property="ResponderId" SortProperty="Responder.LastName" Title="Responder" Width="140px">
+                                <Template>
+                                    @data.Responder?.FirstName @data.Responder?.LastName
+                                </Template>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn TItem="ToDoResponseDto" Property="CreationDate" Title="Creation Date" Width="200px" />
+                            <RadzenDataGridColumn TItem="ToDoResponseDto" Property="LastModifiedDate" Title="Last Modified Date" Width="200px" />
+                            <RadzenDataGridColumn TItem="ToDoResponseDto" Context="data" Property="ResponseText" Title="Response" Width="200px">
+                                <Template>
+                                    @((MarkupString)data.ResponseText)
+                                </Template>
+                            </RadzenDataGridColumn>
+                        </Columns>
+                    </RadzenDataGrid>
                 </div>
             </div>
             <div class="card-body">
                 <div class="row mt-2 mb-5">
                     <h3 class="card-title text-info mb-3 ml-3">History</h3>
-                    
+
                 </div>
             </div>
         </div>
@@ -116,13 +139,54 @@
 @code {
     [Parameter]
     public int Id { get; set; }
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationState { get; set; }
 
     private ToDoItemDto ToDoItemModel { get; set; } = new ToDoItemDto();
+    RadzenDataGrid<ToDoResponseDto> responseGrid { get; set; }
+    IList<ToDoResponseDto> displayResponseData;
+    IList<ToDoResponseDto> selectedResponse;
+
     private string noAssignee = "This item does not have an assignee";
 
     protected override async Task OnInitializedAsync()
     {
+        if (!authenticationState.Result.User.Identity.IsAuthenticated)
+        {
+            var uri = new Uri(navigationManager.Uri);
+            navigationManager.NavigateTo($"/identity/account/login?returnUrl={uri.LocalPath}");
+        }
         ToDoItemModel = await toDoItemRepository.GetToDoItem(Id);
+        var displayDataResult = await toDoResponseRepository.GetAllToDoResponsesForItem(ToDoItemModel.Id);
+        if (displayDataResult != null)
+        {
+            displayResponseData = displayDataResult.ToList();
+        }
+    }
+
+    protected async Task OnCellContextMenu(DataGridCellMouseEventArgs<ToDoResponseDto> args)
+    {
+        selectedResponse = new List<ToDoResponseDto>() { args.Data };
+
+        contextMenuService.Open(args,
+            new List<ContextMenuItem> {
+                new ContextMenuItem(){Text = "View", Value = 0},
+                new ContextMenuItem(){ Text = "Edit", Value = 1 },
+                    }, async (e) =>
+            {
+                if (e.Value.ToString() == "0")
+                {
+                    navigationManager.NavigateTo($"requests/{args.Data.ToDoItemId}/viewResponse/{args.Data.Id}");
+                    contextMenuService.Close();
+                }
+                if (e.Value.ToString() == "1")
+                {
+                    navigationManager.NavigateTo($"requests/{args.Data.ToDoItemId}/editResponse/{args.Data.Id}");
+                    contextMenuService.Close();
+                }
+            }
+            );
+        StateHasChanged();
     }
 
 }

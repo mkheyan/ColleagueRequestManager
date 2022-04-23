@@ -69,7 +69,10 @@ namespace Business.Repository
             try
             {
                 IEnumerable<ToDoResponseDto> responseDtos = _mapper.Map<IEnumerable<ToDoResponse>, IEnumerable<ToDoResponseDto>>(
-                    _context.ToDoResponses.Include(x => x.Attachments).Where(x => x.ToDoItemId == itemId));
+                    _context.ToDoResponses
+                        .Include(x=>x.Responder)
+                        .Include(x => x.Attachments)
+                        .Where(x => x.ToDoItemId == itemId));
                 return responseDtos;
             }
             catch (Exception e)

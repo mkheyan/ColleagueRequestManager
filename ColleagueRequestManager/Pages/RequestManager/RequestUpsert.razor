@@ -80,7 +80,7 @@
                                     </div>
                                     <div class="form-group">
                                         <label>Is Complete</label>
-                                        <p>@ToDoItemModel.IsComplete</p>
+                                        <RadzenCheckBox @bind-Value=@ToDoItemModel.IsComplete TValue="bool" />
                                     </div>
                                     <div class="form-group">
                                         <label>Description</label>
@@ -107,7 +107,7 @@
                                                     <div class="col-md-2 mt-3">
                                                         <div style="background: 50% 50%;">
                                                             <span>@serial</span>
-                                                            <img src="file.png" width="64" height="64"/>
+                                                            <img src="file.png" width="64" height="64" />
                                                         </div>
                                                         <button type="button" @onclick="(() => DeleteFile(file))" class="btn btn-outline-danger btn-block mt-4">
                                                             Delete
@@ -235,7 +235,7 @@
 
     void OnChange(object value, string name)
     {
-        var user = (ApplicationUser) value;
+        var user = (ApplicationUser)value;
         ToDoItemModel.AssigneeId = user.Id;
     }
 
@@ -313,11 +313,11 @@
             {
 
                 ToDoAttachment = new ToDoAttachmentDto()
-                {
-                    ToDoItemId = itemDetails.Id,
-                    AttachmentUrl = fileUrl,
-                    OriginalName = FileModels.First(x=>x.FullPath == fileUrl).Name
-                };
+                    {
+                        ToDoItemId = itemDetails.Id,
+                        AttachmentUrl = fileUrl,
+                        OriginalName = FileModels.First(x => x.FullPath == fileUrl).Name
+                    };
                 await toDoAttachmentRepository.AddToDoAttachment(ToDoAttachment);
             }
         }
