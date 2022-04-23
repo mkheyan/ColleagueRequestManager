@@ -13,6 +13,7 @@ namespace Business.Repository.IRepository
         public Task<ToDoItemDto> UpdateToDoItem (int itemId, ToDoItemDto toDoItemDto);
         public Task<int> DeleteToDoItem (int itemId);
         public Task<IEnumerable<ToDoItemDto>> GetAllToDoItems ();
+        public Task<IEnumerable<ToDoItemDto>> GetAllToDoItems (string userId);
         public Task<ToDoItemDto> GetToDoItem (int itemId);
     }
 }

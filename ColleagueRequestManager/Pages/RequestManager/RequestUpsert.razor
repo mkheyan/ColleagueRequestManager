@@ -86,7 +86,36 @@
                                         <label>Description</label>
                                         <div class="col-xl-6">
                                             <h3>Description</h3>
-                                            <RadzenHtmlEditor @bind-Value="ToDoItemModel.Description" style=" margin-bottom: 1rem;" />
+                                            <RadzenHtmlEditor @bind-Value="ToDoItemModel.Description" style="margin-bottom: 1rem;">
+                                                <RadzenHtmlEditorUndo />
+                                                <RadzenHtmlEditorRedo />
+                                                <RadzenHtmlEditorSeparator />
+                                                <RadzenHtmlEditorBold />
+                                                <RadzenHtmlEditorItalic />
+                                                <RadzenHtmlEditorUnderline />
+                                                <RadzenHtmlEditorStrikeThrough />
+                                                <RadzenHtmlEditorSeparator />
+                                                <RadzenHtmlEditorAlignLeft />
+                                                <RadzenHtmlEditorAlignCenter />
+                                                <RadzenHtmlEditorAlignRight />
+                                                <RadzenHtmlEditorJustify />
+                                                <RadzenHtmlEditorSeparator />
+                                                <RadzenHtmlEditorIndent />
+                                                <RadzenHtmlEditorOutdent />
+                                                <RadzenHtmlEditorUnorderedList />
+                                                <RadzenHtmlEditorOrderedList />
+                                                <RadzenHtmlEditorSeparator />
+                                                <RadzenHtmlEditorColor />
+                                                <RadzenHtmlEditorBackground />
+                                                <RadzenHtmlEditorRemoveFormat />
+                                                <RadzenHtmlEditorSeparator />
+                                                <RadzenHtmlEditorSubscript />
+                                                <RadzenHtmlEditorSuperscript />
+                                                <RadzenHtmlEditorSeparator />
+                                                <RadzenHtmlEditorFontName />
+                                                <RadzenHtmlEditorFontSize />
+                                                <RadzenHtmlEditorFormatBlock />
+                                            </RadzenHtmlEditor>
                                             <ValidationMessage For="() => ToDoItemModel.Description"></ValidationMessage>
                                         </div>
                                     </div>
@@ -185,6 +214,7 @@
             ToDoItemModel.CreatorId = loggedInUserId;
             ToDoItemModel.CreationDate = DateTime.Now;
             ToDoItemModel.LastModifiedDate = DateTime.Now;
+            ToDoItemModel.NecessaryCompletionDate = DateTime.Now.AddDays(7);
         }
         users = await userManager.GetUsersInRoleAsync(SD.Role_User);
     }

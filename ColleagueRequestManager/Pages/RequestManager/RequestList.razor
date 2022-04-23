@@ -4,12 +4,15 @@
 @using DataAccess
 @using global::Models
 @using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Http
 @using Radzen
 @using Radzen.Blazor
+@using System.Security.Claims
 @inject IToDoItemRepository toDoItemRepository
 @inject IJSRuntime jsRuntime
 @inject NavigationManager navigationManager
 @inject ContextMenuService contextMenuService
+@inject IHttpContextAccessor contextAccessor
 @attribute [Authorize]
 
 <div class="row mt-4">
@@ -50,10 +53,19 @@
     RadzenDataGrid<ToDoItemDto> itemGrid { get; set; }
     IList<ToDoItemDto> displayData;
     IList<ToDoItemDto> selectedItem;
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationState { get; set; }
 
     protected async override Task OnInitializedAsync()
     {
-        var displayDataResult = await toDoItemRepository.GetAllToDoItems();
+        if (!authenticationState.Result.User.Identity.IsAuthenticated)
+        {
+            var uri = new Uri(navigationManager.Uri);
+            navigationManager.NavigateTo($"/identity/account/login?returnUrl={uri.LocalPath}");
+        }
+
+        var loggedInUser = contextAccessor.HttpContext.User;
+        var displayDataResult = await toDoItemRepository.GetAllToDoItems(loggedInUser.FindFirstValue(ClaimTypes.NameIdentifier));
         if (displayDataResult != null)
         {
             displayData = displayDataResult.ToList();
@@ -69,7 +81,7 @@
                 new ContextMenuItem(){Text = "View", Value = 0},
                 new ContextMenuItem(){ Text = "Edit", Value = 1 },
                 new ContextMenuItem(){ Text = "Delete", Value = 2 },
-                }, async (e) =>
+                    }, async (e) =>
             {
                 if (e.Value.ToString() == "0")
                 {
@@ -78,15 +90,32 @@
                 }
                 if (e.Value.ToString() == "1")
                 {
-                    navigationManager.NavigateTo($"requests/edit/{args.Data.Id}");
-                    contextMenuService.Close();
+                    var loggedInUser = contextAccessor.HttpContext.User;
+                    if (args.Data.CreatorId == loggedInUser.FindFirstValue(ClaimTypes.NameIdentifier))
+                    {
+                        navigationManager.NavigateTo($"requests/edit/{args.Data.Id}");
+                        contextMenuService.Close();
+                    }
+                    else
+                    {
+                        await jsRuntime.SwalError("You are not authorized to perform this operation");
+                    }
+                    
                 }
                 if (e.Value.ToString() == "2")
                 {
-                    await toDoItemRepository.DeleteToDoItem(args.Data.Id);
-                    displayData.Remove(args.Data);
-                    await jsRuntime.SwalSuccess("To do item has been deleted successfully");
-                    await itemGrid.Reload();
+                    var loggedInUser = contextAccessor.HttpContext.User;
+                    if (args.Data.CreatorId == loggedInUser.FindFirstValue(ClaimTypes.NameIdentifier))
+                    {
+                        await toDoItemRepository.DeleteToDoItem(args.Data.Id);
+                        displayData.Remove(args.Data);
+                        await jsRuntime.SwalSuccess("To do item has been deleted successfully");
+                        await itemGrid.Reload();
+                    }
+                    else
+                    {
+                        await jsRuntime.SwalError("You are not authorized to perform this operation");
+                    }
 
                 }
             }

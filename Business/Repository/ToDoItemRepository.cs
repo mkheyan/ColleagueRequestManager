@@ -50,13 +50,9 @@ namespace Business.Repository
                 var itemDetails = await _context.ToDoItems.FindAsync(itemId);
                 if (itemDetails != null)
                 {
-                    var allAttachments =
-                        await _context.ToDoAttachments.Where(x => x.ToDoItemId == itemId).ToListAsync();
-                    
-                    var allResponses = await _context.ToDoResponses.Where(x => x.ToDoItemId == itemId).ToListAsync();
-                    _context.ToDoAttachments.RemoveRange(allAttachments);
-                    _context.ToDoResponses.RemoveRange(allResponses);
-                    _context.ToDoItems.Remove(itemDetails);
+                    itemDetails.IsDeleted = true;
+                    itemDetails.LastModifiedDate = DateTime.Now;
+                    _context.ToDoItems.Update(itemDetails);
                     return await _context.SaveChangesAsync();
                 }
 
@@ -73,13 +69,37 @@ namespace Business.Repository
             try
             {
                 IEnumerable<ToDoItemDto> itemDtos = _mapper.Map<IEnumerable<ToDoItem>, IEnumerable<ToDoItemDto>>(
-                     _context.ToDoItems.Include(x => x.Attachments).Include(x => x.Responses)
-                         .Include(x=>x.Creator).Include(x=>x.Assignee).AsNoTracking());
+                     _context.ToDoItems.Include(x => x.Attachments)
+                         .Include(x => x.Responses)
+                         .Include(x=>x.Creator)
+                         .Include(x=>x.Assignee)
+                         .Where(x=>x.IsDeleted == false)
+                         .AsNoTracking());
                 return itemDtos;
             }
             catch (Exception e)
             {
-                throw new Exception();
+                throw e;
+            }
+        }
+
+        public async Task<IEnumerable<ToDoItemDto>> GetAllToDoItems(string userId)
+        {
+            try
+            {
+                IEnumerable<ToDoItemDto> itemDtos = _mapper.Map<IEnumerable<ToDoItem>, IEnumerable<ToDoItemDto>>(
+                    _context.ToDoItems.Include(x => x.Attachments)
+                        .Include(x => x.Responses)
+                        .Include(x => x.Creator)
+                        .Include(x => x.Assignee)
+                        .Where((x=>x.CreatorId == userId || x.AssigneeId == userId ))
+                        .Where(x=>x.IsDeleted == false)
+                        .AsNoTracking());
+                return itemDtos;
+            }
+            catch (Exception e)
+            {
+                throw e;
             }
         }
 
