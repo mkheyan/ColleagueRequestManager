@@ -10,6 +10,6 @@ namespace Business.Repository.IRepository
     public interface IToDoHistoryRepository
     {
         public Task<IEnumerable<ToDoHistoryDto>> GetAllToDoHistoryForItem(int itemId);
-        public Task<ToDoHistoryDto> GetToDoHistoryEntryById(int id);
+        public Task<ToDoHistoryDto> AddRecordToHistory(ToDoHistoryDto toDoHistoryDto);
     }
 }

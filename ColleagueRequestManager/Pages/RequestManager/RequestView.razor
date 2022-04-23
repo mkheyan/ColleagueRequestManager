@@ -7,6 +7,7 @@
 
 @inject IToDoItemRepository toDoItemRepository
 @inject IToDoResponseRepository toDoResponseRepository
+@inject IToDoHistoryRepository toDoHistoryRepository
 @inject NavigationManager navigationManager
 @inject ContextMenuService contextMenuService
 
@@ -14,8 +15,9 @@
     <div class="col-6">
         <h2 class="card-title text-info">View Request</h2>
     </div>
-    <div class="col-5 offset-1">
-        <NavLink href="@($"requests/edit/{Id}")" class="btn btn-info form-control">Edit</NavLink>
+    <div>
+        <NavLink href="@($"requests/{Id}/createResponse")" class="btn btn-info">Create Response</NavLink>
+        <NavLink href="@($"requests/edit/{Id}")" class="btn btn-info">Edit</NavLink>
     </div>
 </div>
 
@@ -129,7 +131,23 @@
             <div class="card-body">
                 <div class="row mt-2 mb-5">
                     <h3 class="card-title text-info mb-3 ml-3">History</h3>
-
+                    <RadzenDataGrid @ref="historyGrid" AllowFiltering="true" AllowColumnResize="true" FilterMode="FilterMode.Advanced" AllowSorting="true" PageSize="4" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
+                                    Data="displayHistoryData" TItem="ToDoHistoryDto" ColumnWidth="300px" LogicalFilterOperator="LogicalFilterOperator.Or">
+                        <Columns>
+                            <RadzenDataGridColumn TItem="ToDoHistoryDto" Context="data" Property="UserId" SortProperty="User.LastName" Title="Name" Width="140px">
+                                <Template>
+                                    @data.User?.FirstName @data.User?.LastName
+                                </Template>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn TItem="ToDoHistoryDto" Context="data" Property="UserId" SortProperty="User.Email" Title="Email" Width="140px">
+                                <Template>
+                                    @data.User?.Email
+                                </Template>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn TItem="ToDoHistoryDto" Property="ActionType" Title="Action Type" Width="200px" />
+                            <RadzenDataGridColumn TItem="ToDoHistoryDto" Property="ActionDateTime" Title="Action Date" Width="200px" />
+                        </Columns>
+                    </RadzenDataGrid>
                 </div>
             </div>
         </div>
@@ -144,8 +162,10 @@
 
     private ToDoItemDto ToDoItemModel { get; set; } = new ToDoItemDto();
     RadzenDataGrid<ToDoResponseDto> responseGrid { get; set; }
+    RadzenDataGrid<ToDoHistoryDto> historyGrid { get; set; }
     IList<ToDoResponseDto> displayResponseData;
     IList<ToDoResponseDto> selectedResponse;
+    IList<ToDoHistoryDto> displayHistoryData;
 
     private string noAssignee = "This item does not have an assignee";
 
@@ -157,10 +177,15 @@
             navigationManager.NavigateTo($"/identity/account/login?returnUrl={uri.LocalPath}");
         }
         ToDoItemModel = await toDoItemRepository.GetToDoItem(Id);
-        var displayDataResult = await toDoResponseRepository.GetAllToDoResponsesForItem(ToDoItemModel.Id);
-        if (displayDataResult != null)
+        var displayResponseDataResult = await toDoResponseRepository.GetAllToDoResponsesForItem(ToDoItemModel.Id);
+        if (displayResponseDataResult != null)
         {
-            displayResponseData = displayDataResult.ToList();
+            displayResponseData = displayResponseDataResult.ToList();
+        }
+        var displayHistoryDataResult = await toDoHistoryRepository.GetAllToDoHistoryForItem(ToDoItemModel.Id);
+        if (displayHistoryDataResult != null)
+        {
+            displayHistoryData = displayHistoryDataResult.ToList();
         }
     }
 

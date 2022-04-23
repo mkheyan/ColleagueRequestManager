@@ -17,6 +17,8 @@ namespace Models
         public virtual ToDoItemDto ToDoItem { get; set; }
         [Required]
         public ActionType ActionType { get; set; }
+        [Required]
+        public DateTime ActionDateTime { get; set; }
         public string UserId { get; set; }
         public virtual ApplicationUserModel User { get; set; }
     }

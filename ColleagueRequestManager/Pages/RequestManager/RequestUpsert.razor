@@ -53,6 +53,10 @@
                                     </div>
                                     <div class="form-group">
                                         <label>Assignee</label>
+                                        @if (ToDoItemModel.Assignee != null)
+                                        {
+                                            <InputText @bind-Value="ToDoItemModel.Assignee.Email" disabled="true" class="form-control"></InputText>
+                                        }
                                         <RadzenCard>
                                             <p class="mb-4">Select assignee from the list</p>
                                             <RadzenDropDownDataGrid TValue="ApplicationUser" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" FilterOperator="StringFilterOperator.StartsWith" AllowVirtualization="true"
@@ -125,7 +129,7 @@
                                             @if (IsFileUploadProcessStarted)
                                             {
                                                 <div class="col-md-12">
-                                                    <span><i></i>Please wait..Images are uploading...</span>
+                                                    <span><i></i>Please wait...Files are uploading...</span>
                                                 </div>
                                             }
                                             @if (ToDoItemModel.FileUrls != null && ToDoItemModel.FileUrls.Count > 0)
@@ -250,7 +254,11 @@
             {
                 //create
                 var createdResult = await toDoItemRepository.CreateToDoItem(ToDoItemModel);
-                await AddToDoAttachment(createdResult);
+                if (ToDoItemModel.FileUrls != null && ToDoItemModel.FileUrls.Any() ||
+                    DeletedFileNames != null && DeletedFileNames.Any())
+                {
+                    await AddToDoAttachment(createdResult);
+                }
                 await jsRuntime.SwalSuccess("To do item created successfully.");
             }
         }

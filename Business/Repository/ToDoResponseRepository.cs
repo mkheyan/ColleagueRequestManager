@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using AutoMapper;
 using Business.Repository.IRepository;
+using Common;
 using DataAccess;
 using Microsoft.EntityFrameworkCore;
 using Models;
@@ -16,11 +17,13 @@ namespace Business.Repository
 
         private readonly ApplicationDbContext _context;
         private readonly IMapper _mapper;
+        private readonly IToDoHistoryRepository _historyRepository;
 
-        public ToDoResponseRepository(ApplicationDbContext context, IMapper mapper)
+        public ToDoResponseRepository(ApplicationDbContext context, IMapper mapper, IToDoHistoryRepository historyRepository)
         {
             _context = context;
             _mapper = mapper;
+            _historyRepository = historyRepository;
         }
         public async Task<ToDoResponseDto> CreateToDoResponse(int itemId, ToDoResponseDto toDoResponseDto)
         {
@@ -32,6 +35,16 @@ namespace Business.Repository
                 response.ToDoItemId = itemId;
                 response.Responder = null;
                 var addedResponse = await _context.ToDoResponses.AddAsync(response);
+                await _context.SaveChangesAsync();
+                await _historyRepository.AddRecordToHistory(
+                    new ToDoHistoryDto()
+                    {
+                        ActionDateTime = DateTime.Now,
+                        ActionType = ActionType.Create_Response,
+                        ToDoItemId = addedResponse.Entity.ToDoItemId,
+                        UserId = addedResponse.Entity.ResponderId
+
+                    });
                 await _context.SaveChangesAsync();
                 return _mapper.Map<ToDoResponse, ToDoResponseDto>(addedResponse.Entity);
             }
@@ -77,7 +90,8 @@ namespace Business.Repository
             }
             catch (Exception e)
             {
-                throw new Exception();
+                Console.WriteLine(e);
+                throw;
             }
         }
 
@@ -92,7 +106,8 @@ namespace Business.Repository
             }
             catch (Exception e)
             {
-                throw new Exception();
+                Console.WriteLine(e);
+                throw;
             }
         }
 
@@ -107,6 +122,17 @@ namespace Business.Repository
                     ToDoResponse response = _mapper.Map<ToDoResponseDto, ToDoResponse>(toDoResponseDto, responseDetails);
                     response.LastModifiedDate = DateTime.Now;
                     var updatedResponse = _context.ToDoResponses.Update(response);
+                    await _context.SaveChangesAsync();
+                    await _historyRepository.AddRecordToHistory(
+                        new ToDoHistoryDto()
+                        {
+                            ActionDateTime = DateTime.Now,
+                            ActionType = ActionType.Update_Response,
+                            ToDoItemId = updatedResponse.Entity.ToDoItemId,
+                            UserId = updatedResponse.Entity.ResponderId
+
+                        });
+                    await _context.SaveChangesAsync();
                     return _mapper.Map<ToDoResponse, ToDoResponseDto>(updatedResponse.Entity);
                 }
                 else
@@ -117,7 +143,8 @@ namespace Business.Repository
             }
             catch (Exception e)
             {
-                throw new Exception();
+                Console.WriteLine(e);
+                throw;
             }
         }
     }

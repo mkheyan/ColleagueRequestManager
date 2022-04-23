@@ -25,7 +25,7 @@
 </div>
 <div class="row mt-4">
     <div class="col-md-12">
-        <RadzenDataGrid @ref="itemGrid" AllowFiltering="true" AllowColumnResize="true" FilterMode="FilterMode.Advanced" AllowSorting="true" PageSize="4" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
+        <RadzenDataGrid @ref="itemGrid" AllowFiltering="true" AllowColumnResize="true" FilterMode="FilterMode.Advanced" AllowSorting="true" AllowMultiColumnSorting="true" PageSize="4" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
                         Data="displayData" TItem="ToDoItemDto" ColumnWidth="300px" LogicalFilterOperator="LogicalFilterOperator.Or"
                         SelectionMode="DataGridSelectionMode.Single" @bind-Value=@selectedItem CellContextMenu="@OnCellContextMenu">
             <Columns>
@@ -41,7 +41,7 @@
                     </Template>
                 </RadzenDataGridColumn>
                 <RadzenDataGridColumn TItem="ToDoItemDto" Property="CreationDate" Title="Creation Date" Width="200px" />
-                <RadzenDataGridColumn TItem="ToDoItemDto" Property="LastModifiedDate" Title="Last Modified Date" Width="200px" />
+                <RadzenDataGridColumn TItem="ToDoItemDto" Property="LastModifiedDate" Title="Last Modified Date" SortOrder="SortOrder.Descending" Width="200px" />
                 <RadzenDataGridColumn TItem="ToDoItemDto" Property="NecessaryCompletionDate" Title="Necessary Completion Date" Width="200px" />
                 <RadzenDataGridColumn TItem="ToDoItemDto" Property="IsComplete" Title="Is Complete" Width="200px" />
 

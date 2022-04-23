@@ -8,10 +8,10 @@ namespace Common
 {
     public enum ActionType
     {
-        CreateItem = 0,
-        UpdateItem = 1,
-        DeleteItem = 2,
-        Respond = 3,
-        MarkComplete = 4
+        Create_Item = 0,
+        Update_Item = 1,
+        Delete_Item = 2,
+        Create_Response = 3,
+        Update_Response = 4
     }
 }

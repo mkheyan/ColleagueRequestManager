@@ -1,4 +1,3 @@
-using ColleagueRequestManager.Data;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Hosting;
@@ -46,6 +45,7 @@ namespace ColleagueRequestManager
             services.AddScoped<IToDoItemRepository, ToDoItemRepository>();
             services.AddScoped<IToDoAttachmentRepository, ToDoAttachmentRepository>();
             services.AddScoped<IToDoResponseRepository, ToDoResponseRepository>();
+            services.AddScoped<IToDoHistoryRepository, ToDoHistoryRepository>();
             services.AddScoped<ContextMenuService>();
             services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
             services.AddHttpContextAccessor();
@@ -53,7 +53,6 @@ namespace ColleagueRequestManager
             services.AddScoped<NotificationService>();
             services.AddRazorPages();
             services.AddServerSideBlazor();
-            services.AddSingleton<WeatherForecastService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

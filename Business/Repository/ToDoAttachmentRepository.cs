@@ -57,7 +57,7 @@ namespace Business.Repository
             {
                 var attachment =
                     await _context.ToDoAttachments.FirstOrDefaultAsync(
-                        x => x.AttachmentUrl.Equals(url, StringComparison.CurrentCultureIgnoreCase));
+                        x => x.AttachmentUrl.ToLower() == url.ToLower());
                 if (attachment == null)
                 {
                     return 0;
@@ -67,7 +67,8 @@ namespace Business.Repository
             }
             catch (Exception e)
             {
-                throw new Exception();
+                Console.WriteLine(e);
+                throw;
             }
         }
 
@@ -81,7 +82,8 @@ namespace Business.Repository
             }
             catch (Exception e)
             {
-                throw new Exception();
+                Console.WriteLine(e);
+                throw;
             }
         }
 
