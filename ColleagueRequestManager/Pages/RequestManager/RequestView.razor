@@ -4,20 +4,26 @@
 @using System.IO
 @using Radzen
 @using Radzen.Blazor
+@using Microsoft.AspNetCore.Http
+@using System.Security.Claims
 
 @inject IToDoItemRepository toDoItemRepository
 @inject IToDoResponseRepository toDoResponseRepository
 @inject IToDoHistoryRepository toDoHistoryRepository
 @inject NavigationManager navigationManager
 @inject ContextMenuService contextMenuService
+@inject IHttpContextAccessor contextAccessor
 
 <div class="row mt-4">
-    <div class="col-6">
+    <div class="col-10">
         <h2 class="card-title text-info">View Request</h2>
     </div>
-    <div>
+    <div class="col-2">
         <NavLink href="@($"requests/{Id}/createResponse")" class="btn btn-info">Create Response</NavLink>
-        <NavLink href="@($"requests/edit/{Id}")" class="btn btn-info">Edit</NavLink>
+        @if(ToDoItemModel.CreatorId == contextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier))
+        {
+            <NavLink href="@($"requests/edit/{Id}")" class="btn btn-info" style="margin-left:10px">Edit</NavLink>  
+        }
     </div>
 </div>
 
@@ -108,7 +114,7 @@
             <div class="card-body">
                 <div class="row mt-2 mb-5">
                     <h3 class="card-title text-info mb-3 ml-3">Responses</h3>
-                    <RadzenDataGrid @ref="responseGrid" AllowFiltering="true" AllowColumnResize="true" FilterMode="FilterMode.Advanced" AllowSorting="true" PageSize="4" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
+                    <RadzenDataGrid @ref="responseGrid" AllowFiltering="true" AllowColumnResize="true" FilterMode="FilterMode.Advanced" AllowSorting="true" PageSize="5" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
                                     Data="displayResponseData" TItem="ToDoResponseDto" ColumnWidth="300px" LogicalFilterOperator="LogicalFilterOperator.Or"
                                     SelectionMode="DataGridSelectionMode.Single" @bind-Value=@selectedResponse CellContextMenu="@OnCellContextMenu">
                         <Columns>
@@ -131,7 +137,7 @@
             <div class="card-body">
                 <div class="row mt-2 mb-5">
                     <h3 class="card-title text-info mb-3 ml-3">History</h3>
-                    <RadzenDataGrid @ref="historyGrid" AllowFiltering="true" AllowColumnResize="true" FilterMode="FilterMode.Advanced" AllowSorting="true" PageSize="4" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
+                    <RadzenDataGrid @ref="historyGrid" AllowFiltering="true" AllowColumnResize="true" FilterMode="FilterMode.Advanced" AllowSorting="true" PageSize="5" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
                                     Data="displayHistoryData" TItem="ToDoHistoryDto" ColumnWidth="300px" LogicalFilterOperator="LogicalFilterOperator.Or">
                         <Columns>
                             <RadzenDataGridColumn TItem="ToDoHistoryDto" Context="data" Property="UserId" SortProperty="User.LastName" Title="Name" Width="140px">

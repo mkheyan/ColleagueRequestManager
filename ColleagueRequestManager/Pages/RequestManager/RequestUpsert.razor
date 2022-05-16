@@ -20,6 +20,7 @@
 @inject IToDoAttachmentRepository toDoAttachmentRepository
 @inject NavigationManager navigationManager
 @inject IHttpContextAccessor contextAccessor
+@inject TooltipService tooltipService
 
 <div class="row mt-2 mb-5">
     <div class="col-md-12">
@@ -141,6 +142,15 @@
                                                         <div style="background: 50% 50%;">
                                                             <span>@serial</span>
                                                             <img src="file.png" width="64" height="64" />
+                                                            @{
+                                                                var fileName = ToDoItemModel.Attachments.FirstOrDefault(x => x.AttachmentUrl == file)?.OriginalName;
+                                                                if (string.IsNullOrEmpty(fileName))
+                                                                {
+                                                                    fileName = FileModels.FirstOrDefault(x => x.FullPath == file).Name;
+                                                                }
+
+                                                                <RadzenTextBox title="@fileName" Disabled=true @bind-Value=fileName Class="w-100" />
+                                                            }
                                                         </div>
                                                         <button type="button" @onclick="(() => DeleteFile(file))" class="btn btn-outline-danger btn-block mt-4">
                                                             Delete
@@ -193,6 +203,10 @@
             //update
             Title = "Update";
             ToDoItemModel = await toDoItemRepository.GetToDoItem(Id.Value);
+            if (ToDoItemModel.CreatorId != contextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier))
+            {
+                navigationManager.NavigateTo($"/requests/{Id.Value}");
+            }
             if (ToDoItemModel?.Attachments != null)
             {
                 ToDoItemModel.FileUrls = ToDoItemModel.Attachments.Select(u => u.AttachmentUrl).ToList();
@@ -360,5 +374,4 @@
             }
         }
     }
-
 }
