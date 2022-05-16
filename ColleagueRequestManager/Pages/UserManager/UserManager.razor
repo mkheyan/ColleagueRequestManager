@@ -28,10 +28,10 @@
                         Data="displayData" TItem="ApplicationUser" ColumnWidth="300px" LogicalFilterOperator="LogicalFilterOperator.Or"
                         SelectionMode="DataGridSelectionMode.Single" @bind-Value=@selectedUser CellContextMenu="@OnCellContextMenu">
             <Columns>
-                <RadzenDataGridColumn TItem="ApplicationUser" Property="FirstName" Title="First Name" Width="140px" />
-                <RadzenDataGridColumn TItem="ApplicationUser" Property="LastName" Title="Last Name" Width="140px" />
-                <RadzenDataGridColumn TItem="ApplicationUser" Property="Title" Title="Job Title" Width="200px" />
-                <RadzenDataGridColumn TItem="ApplicationUser" Property="Email" Title="Email" Width="200px" />
+                <RadzenDataGridColumn TItem="ApplicationUser" Property="FirstName" Sortable=true Title="First Name" Width="140px" />
+                <RadzenDataGridColumn TItem="ApplicationUser" Property="LastName" Sortable=true Title="Last Name" Width="140px" />
+                <RadzenDataGridColumn TItem="ApplicationUser" Property="Title" Sortable=true Title="Job Title" Width="200px" />
+                <RadzenDataGridColumn TItem="ApplicationUser" Property="Email" Sortable=true Title="Email" Width="200px" />
 
             </Columns>
         </RadzenDataGrid>

@@ -29,21 +29,21 @@
                         Data="displayData" TItem="ToDoItemDto" ColumnWidth="300px" LogicalFilterOperator="LogicalFilterOperator.Or"
                         SelectionMode="DataGridSelectionMode.Single" @bind-Value=@selectedItem CellContextMenu="@OnCellContextMenu">
             <Columns>
-                <RadzenDataGridColumn TItem="ToDoItemDto" Property="Subject" Title="Subject" Width="140px" />
-                <RadzenDataGridColumn TItem="ToDoItemDto" Context="data" Property="CreatorId" SortProperty="Creator.LastName" Title="Creator" Width="140px">
+                <RadzenDataGridColumn TItem="ToDoItemDto" Property="Subject" Sortable=true Title="Subject" Width="140px" />
+                <RadzenDataGridColumn TItem="ToDoItemDto" Context="data" Property="CreatorId" Sortable=true SortProperty="Creator.LastName" Title="Creator" Width="140px">
                     <Template>
                         @data.Creator?.FirstName @data.Creator?.LastName
                     </Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="ToDoItemDto" Context="data" Property="AssigneeId" SortProperty="Assignee.LastName" Title="Assignee" Width="140px">
+                <RadzenDataGridColumn TItem="ToDoItemDto" Context="data" Property="AssigneeId" Sortable=true SortProperty="Assignee.LastName" Title="Assignee" Width="140px">
                     <Template>
                         @data.Assignee?.FirstName @data.Assignee?.LastName
                     </Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="ToDoItemDto" Property="CreationDate" Title="Creation Date" Width="200px" />
-                <RadzenDataGridColumn TItem="ToDoItemDto" Property="LastModifiedDate" Title="Last Modified Date" SortOrder="SortOrder.Descending" Width="200px" />
-                <RadzenDataGridColumn TItem="ToDoItemDto" Property="NecessaryCompletionDate" Title="Necessary Completion Date" Width="200px" />
-                <RadzenDataGridColumn TItem="ToDoItemDto" Property="IsComplete" Title="Is Complete" Width="200px" />
+                <RadzenDataGridColumn TItem="ToDoItemDto" Property="CreationDate" Sortable=true Title="Creation Date" Width="200px" />
+                <RadzenDataGridColumn TItem="ToDoItemDto" Property="LastModifiedDate" Sortable=true Title="Last Modified Date" SortOrder="SortOrder.Descending" Width="200px" />
+                <RadzenDataGridColumn TItem="ToDoItemDto" Property="NecessaryCompletionDate" Sortable=true Title="Necessary Completion Date" Width="200px" />
+                <RadzenDataGridColumn TItem="ToDoItemDto" Property="IsComplete" Sortable=true Title="Is Complete" Width="200px" />
 
             </Columns>
         </RadzenDataGrid>
