@@ -12,7 +12,6 @@
 @inject IJSRuntime jsRuntime
 @inject NavigationManager navigationManager
 @inject ContextMenuService contextMenuService
-@inject IHttpContextAccessor contextAccessor
 @attribute [Authorize]
 
 <div class="row mt-4">
@@ -64,7 +63,8 @@
             navigationManager.NavigateTo($"/identity/account/login?returnUrl={uri.LocalPath}");
         }
 
-        var loggedInUser = contextAccessor.HttpContext.User;
+        
+        var loggedInUser = authenticationState.Result.User;
         var displayDataResult = await toDoItemRepository.GetAllToDoItems(loggedInUser.FindFirstValue(ClaimTypes.NameIdentifier));
         if (displayDataResult != null)
         {
@@ -90,7 +90,7 @@
                 }
                 if (e.Value.ToString() == "1")
                 {
-                    var loggedInUser = contextAccessor.HttpContext.User;
+                    var loggedInUser = authenticationState.Result.User;
                     if (args.Data.CreatorId == loggedInUser.FindFirstValue(ClaimTypes.NameIdentifier))
                     {
                         navigationManager.NavigateTo($"requests/edit/{args.Data.Id}");
@@ -104,7 +104,7 @@
                 }
                 if (e.Value.ToString() == "2")
                 {
-                    var loggedInUser = contextAccessor.HttpContext.User;
+                    var loggedInUser = authenticationState.Result.User;
                     if (args.Data.CreatorId == loggedInUser.FindFirstValue(ClaimTypes.NameIdentifier))
                     {
                         await toDoItemRepository.DeleteToDoItem(args.Data.Id);

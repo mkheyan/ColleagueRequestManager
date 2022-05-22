@@ -12,7 +12,6 @@
 @using Microsoft.AspNetCore.Http
 @inject NavigationManager navigationManager
 @inject IToDoResponseRepository toDoResponseRepository
-@inject IHttpContextAccessor contextAccessor
 @inject Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> userManager
 @inject IJSRuntime jsRuntime
 @inject IFileUpload fileUpload
@@ -100,7 +99,7 @@
                                                             <span>@serial</span>
                                                             <img src="file.png" width="64" height="64" />
                                                             @{
-                                                                var fileName = ToDoResponseModel.Attachments.FirstOrDefault(x => x.AttachmentUrl == file)?.OriginalName;
+                                                                var fileName = ToDoResponseModel.Attachments?.FirstOrDefault(x => x.AttachmentUrl == file)?.OriginalName;
                                                                 if (string.IsNullOrEmpty(fileName))
                                                                 {
                                                                     fileName = FileModels.FirstOrDefault(x => x.FullPath == file).Name;
@@ -161,6 +160,10 @@
             //update
             Title = "Update";
             ToDoResponseModel = await toDoResponseRepository.GetToDoResponse(responseId.Value);
+            if (ToDoResponseModel.ResponderId != authenticationState.Result.User.FindFirstValue(ClaimTypes.NameIdentifier))
+            {
+                navigationManager.NavigateTo($"/requests/{requestId}");
+            }
             if (ToDoResponseModel?.Attachments != null)
             {
                 ToDoResponseModel.FileUrls = ToDoResponseModel.Attachments.Select(u => u.AttachmentUrl).ToList();
@@ -171,7 +174,7 @@
         {
             //create
             ToDoResponseModel = new ToDoResponseDto();
-            var loggedInUser = contextAccessor.HttpContext.User;
+            var loggedInUser = authenticationState.Result.User;
             var loggedInUserId = loggedInUser.FindFirstValue(ClaimTypes.NameIdentifier);
             var loggedInUserFromDb = await userManager.FindByIdAsync(loggedInUserId);
             ToDoResponseModel.Responder = new ApplicationUserModel()

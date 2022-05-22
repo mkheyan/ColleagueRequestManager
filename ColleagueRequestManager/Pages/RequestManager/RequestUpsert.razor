@@ -19,7 +19,7 @@
 @inject IToDoItemRepository toDoItemRepository
 @inject IToDoAttachmentRepository toDoAttachmentRepository
 @inject NavigationManager navigationManager
-@inject IHttpContextAccessor contextAccessor
+
 
 <div class="row mt-2 mb-5">
     <div class="col-md-12">
@@ -142,7 +142,7 @@
                                                             <span>@serial</span>
                                                             <img src="file.png" width="64" height="64" />
                                                             @{
-                                                                var fileName = ToDoItemModel.Attachments.FirstOrDefault(x => x.AttachmentUrl == file)?.OriginalName;
+                                                                var fileName = ToDoItemModel.Attachments?.FirstOrDefault(x => x.AttachmentUrl == file)?.OriginalName;
                                                                 if (string.IsNullOrEmpty(fileName))
                                                                 {
                                                                     fileName = FileModels.FirstOrDefault(x => x.FullPath == file).Name;
@@ -202,7 +202,7 @@
             //update
             Title = "Update";
             ToDoItemModel = await toDoItemRepository.GetToDoItem(Id.Value);
-            if (ToDoItemModel.CreatorId != contextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier))
+            if (ToDoItemModel.CreatorId != authenticationState.Result.User.FindFirstValue(ClaimTypes.NameIdentifier))
             {
                 navigationManager.NavigateTo($"/requests/{Id.Value}");
             }
@@ -216,7 +216,7 @@
         {
             //create
             ToDoItemModel = new ToDoItemDto();
-            var loggedInUser = contextAccessor.HttpContext.User;
+            var loggedInUser = authenticationState.Result.User;
             var loggedInUserId = loggedInUser.FindFirstValue(ClaimTypes.NameIdentifier);
             var loggedInUserFromDb = await userManager.FindByIdAsync(loggedInUserId);
             ToDoItemModel.Creator = new ApplicationUserModel()
@@ -358,6 +358,7 @@
 
     private async Task AddToDoAttachment(ToDoItemDto itemDetails)
     {
+        
         foreach (var fileUrl in ToDoItemModel.FileUrls)
         {
             if (ToDoItemModel.Attachments == null || ToDoItemModel.Attachments.Where(x => x.AttachmentUrl == fileUrl).Count() == 0)

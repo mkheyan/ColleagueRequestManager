@@ -48,7 +48,6 @@ namespace ColleagueRequestManager
             services.AddScoped<IToDoHistoryRepository, ToDoHistoryRepository>();
             services.AddScoped<ContextMenuService>();
             services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
-            services.AddHttpContextAccessor();
             services.AddScoped<DialogService>();
             services.AddScoped<NotificationService>();
             services.AddRazorPages();

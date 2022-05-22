@@ -6,7 +6,6 @@
 @using System.Security.Claims
 @inject NavigationManager navigationManager
 @inject IToDoResponseRepository toDoResponseRepository
-@inject IHttpContextAccessor contextAccessor
 
 <div class="row mt-2 mb-5">
     <div class="col-md-12">
@@ -15,7 +14,7 @@
                 <div class="row mt-2 mb-5">
                     <h3 class="card-title text-info mb-3 ml-3 col-8">View Response</h3>
                     <div class="col-2">
-                    @if (ToDoResponseModel.ResponderId == contextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier))
+                    @if (ToDoResponseModel.ResponderId == authenticationState.Result.User.FindFirstValue(ClaimTypes.NameIdentifier))
                     {
                         <NavLink href="@($"/requests/{requestId}/editResponse/{responseId}")" class="btn btn-info" style="margin-left:10px">Edit</NavLink>
                     }
