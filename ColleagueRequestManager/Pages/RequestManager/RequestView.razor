@@ -15,10 +15,10 @@
 @inject IHttpContextAccessor contextAccessor
 
 <div class="row mt-4">
-    <div class="col-10">
+    <div class="col-9">
         <h2 class="card-title text-info">View Request</h2>
     </div>
-    <div class="col-2">
+    <div class="col-3">
         <NavLink href="@($"requests/{Id}/createResponse")" class="btn btn-info">Create Response</NavLink>
         @if(ToDoItemModel.CreatorId == contextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier))
         {

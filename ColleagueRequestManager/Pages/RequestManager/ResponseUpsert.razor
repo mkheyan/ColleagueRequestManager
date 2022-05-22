@@ -33,6 +33,10 @@
                                     <DataAnnotationsValidator />
                                     <ValidationSummary />
                                     <div class="form-group">
+                                        <label>Responder</label>
+                                        <InputText @bind-Value="ToDoResponseModel.Responder.Email" disabled="true" class="form-control"></InputText>
+                                    </div>
+                                    <div class="form-group">
                                         <label>Creation Date</label>
                                         <InputDate @bind-Value="ToDoResponseModel.CreationDate" disabled="true" class="form-control"></InputDate>
                                     </div>
@@ -95,6 +99,15 @@
                                                         <div style="background: 50% 50%;">
                                                             <span>@serial</span>
                                                             <img src="file.png" width="64" height="64" />
+                                                            @{
+                                                                var fileName = ToDoResponseModel.Attachments.FirstOrDefault(x => x.AttachmentUrl == file)?.OriginalName;
+                                                                if (string.IsNullOrEmpty(fileName))
+                                                                {
+                                                                    fileName = FileModels.FirstOrDefault(x => x.FullPath == file).Name;
+                                                                }
+
+                                                                <RadzenTextBox title="@fileName" Disabled=true @bind-Value=fileName Class="w-100" />
+                                                            }
                                                         </div>
                                                         <button type="button" @onclick="(() => DeleteFile(file))" class="btn btn-outline-danger btn-block mt-4">
                                                             Delete

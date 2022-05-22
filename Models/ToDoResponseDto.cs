@@ -19,7 +19,7 @@ namespace Models
         public DateTime LastModifiedDate { get; set; }
         [Required]
         public string ResponderId { get; set; }
-        public virtual ApplicationUserModel Responder { get; set; }
+        public virtual ApplicationUserModel Responder { get; set; } = new ApplicationUserModel();
         [Required]
         public int ToDoItemId { get; set; }
         public virtual ToDoItemDto ToDoItem { get; set; }

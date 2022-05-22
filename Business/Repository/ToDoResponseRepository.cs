@@ -101,6 +101,7 @@ namespace Business.Repository
             {
                 ToDoResponseDto response = _mapper.Map<ToDoResponse, ToDoResponseDto>(await _context.ToDoResponses
                     .Include(x => x.Attachments)
+                    .Include(x=>x.Responder)
                     .FirstOrDefaultAsync(x => x.Id == responseId));
                 return response;
             }

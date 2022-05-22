@@ -2,19 +2,32 @@
 @using global::Models
 @using Business.Repository.IRepository
 @using Radzen.Blazor
+@using Microsoft.AspNetCore.Http
+@using System.Security.Claims
 @inject NavigationManager navigationManager
 @inject IToDoResponseRepository toDoResponseRepository
+@inject IHttpContextAccessor contextAccessor
 
 <div class="row mt-2 mb-5">
     <div class="col-md-12">
         <div class="card">
             <div class="card-body">
                 <div class="row mt-2 mb-5">
-                    <h3 class="card-title text-info mb-3 ml-3">View Response</h3>
+                    <h3 class="card-title text-info mb-3 ml-3 col-8">View Response</h3>
+                    <div class="col-2">
+                    @if (ToDoResponseModel.ResponderId == contextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier))
+                    {
+                        <NavLink href="@($"/requests/{requestId}/editResponse/{responseId}")" class="btn btn-info" style="margin-left:10px">Edit</NavLink>
+                    }
+                </div>
                     <div class="col-md-12">
                         <div class="card">
                             <div class="card-body">
                                 <EditForm Model="ToDoResponseModel">
+                                    <div class="form-group">
+                                        <label>Responder</label>
+                                        <InputText @bind-Value="ToDoResponseModel.Responder.Email" disabled="true" class="form-control"></InputText>
+                                    </div>
                                     <div class="form-group">
                                         <label>Creation Date</label>
                                         <InputDate @bind-Value="ToDoResponseModel.CreationDate" disabled="true" class="form-control"></InputDate>
@@ -31,23 +44,26 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="form-group" style="padding-top: 70px;">
-                                        <div class="row">
-                                            @if (ToDoResponseModel.Attachments != null && ToDoResponseModel.Attachments.Count > 0)
-                                            {
-                                                int serial = 1;
-                                                foreach (var file in ToDoResponseModel.Attachments)
-                                                {
-                                                    var url = file.AttachmentUrl;
-                                                    <RadzenIcon Icon="description" />
-                                                    <NavLink href="@url">@file.OriginalName</NavLink>
-                                                    <br/>
+                                    @if (ToDoResponseModel.Attachments != null && ToDoResponseModel.Attachments.Count > 0)
+                                    {
+                                        <div class="form-group" style="padding-top: 70px;">
+                                            <div class="row">
 
-                                                    serial++;
+                                                @{
+                                                    int serial = 1;
+                                                    foreach (var file in ToDoResponseModel.Attachments)
+                                                    {
+                                                        var url = file.AttachmentUrl;
+                                                        <RadzenIcon Icon="description" />
+                                                        <NavLink href="@url">@file.OriginalName</NavLink>
+                                                        <br />
+
+                                                        serial++;
+                                                    }
                                                 }
-                                            }
+                                            </div>
                                         </div>
-                                    </div>
+                                    }
                                     <div class="form-group">
                                         <NavLink href="@($"requests/{requestId}")" class="btn btn-secondary">Back to Request</NavLink>
                                     </div>
@@ -70,6 +86,7 @@
     private Task<AuthenticationState> authenticationState { get; set; }
 
     private ToDoResponseDto ToDoResponseModel { get; set; } = new ToDoResponseDto();
+
 
     protected override async Task OnInitializedAsync()
     {
