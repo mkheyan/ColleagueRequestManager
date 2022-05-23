@@ -50,6 +50,11 @@ namespace ColleagueRequestManager
             services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
             services.AddScoped<DialogService>();
             services.AddScoped<NotificationService>();
+            services.AddSignalR().AddAzureSignalR(options =>
+            {
+                options.ServerStickyMode =
+                    Microsoft.Azure.SignalR.ServerStickyMode.Required;
+            });
             services.AddRazorPages();
             services.AddServerSideBlazor();
         }
