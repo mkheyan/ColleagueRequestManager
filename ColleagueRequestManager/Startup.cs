@@ -50,11 +50,22 @@ namespace ColleagueRequestManager
             services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
             services.AddScoped<DialogService>();
             services.AddScoped<NotificationService>();
-            services.AddSignalR().AddAzureSignalR(options =>
+            // Only use Azure SignalR when a connection string is configured (e.g. in Azure)
+            var azureSignalRConnection = Configuration["Azure:SignalR:ConnectionString"];
+            if (!string.IsNullOrWhiteSpace(azureSignalRConnection))
             {
-                options.ServerStickyMode =
-                    Microsoft.Azure.SignalR.ServerStickyMode.Required;
-            });
+                services.AddSignalR()
+                        .AddAzureSignalR(options =>
+                        {
+                            options.ConnectionString = azureSignalRConnection;
+                            options.ServerStickyMode = Microsoft.Azure.SignalR.ServerStickyMode.Required;
+                        });
+            }
+            else
+            {
+                // Local or non-Azure hosting: use in-memory SignalR
+                services.AddSignalR();
+            }
             services.AddRazorPages();
             services.AddServerSideBlazor();
         }
