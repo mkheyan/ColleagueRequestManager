@@ -1,7 +1,9 @@
 ﻿@page
 @using Microsoft.AspNetCore.Identity
+@using Business.Services
 @using DataAccess
 @inject SignInManager<ApplicationUser> SignInManager
+@inject IChatHistoryCache ChatHistoryCache
 
 @functions
 {
@@ -9,6 +11,12 @@
     {
         if (SignInManager.IsSignedIn(User))
         {
+            var username = User.Identity?.Name;
+            if (!string.IsNullOrWhiteSpace(username))
+            {
+                ChatHistoryCache.ClearUserHistory(username);
+            }
+
             await SignInManager.SignOutAsync();
         }
 

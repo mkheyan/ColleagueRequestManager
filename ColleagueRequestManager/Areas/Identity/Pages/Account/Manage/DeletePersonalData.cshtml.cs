@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
+using Business.Services;
 using DataAccess;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -13,15 +14,18 @@ namespace ColleagueRequestManager.Areas.Identity.Pages.Account.Manage
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly IChatHistoryCache _chatHistoryCache;
         private readonly ILogger<DeletePersonalDataModel> _logger;
 
         public DeletePersonalDataModel(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
+            IChatHistoryCache chatHistoryCache,
             ILogger<DeletePersonalDataModel> logger)
         {
             _userManager = userManager;
             _signInManager = signInManager;
+            _chatHistoryCache = chatHistoryCache;
             _logger = logger;
         }
 
@@ -72,6 +76,11 @@ namespace ColleagueRequestManager.Areas.Identity.Pages.Account.Manage
             if (!result.Succeeded)
             {
                 throw new InvalidOperationException($"Unexpected error occurred deleting user with ID '{userId}'.");
+            }
+
+            if (!string.IsNullOrWhiteSpace(user.UserName))
+            {
+                _chatHistoryCache.ClearUserHistory(user.UserName);
             }
 
             await _signInManager.SignOutAsync();
