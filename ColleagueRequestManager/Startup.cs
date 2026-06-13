@@ -18,6 +18,9 @@ using ColleagueRequestManager.Service.IService;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Radzen;
+using Microsoft.Extensions.AI;
+using OllamaSharp;
+using Business.Services;
 
 namespace ColleagueRequestManager
 {
@@ -34,8 +37,10 @@ namespace ColleagueRequestManager
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
+            services.AddScoped<ApplicationDbContext>(p =>
+    p.GetRequiredService<IDbContextFactory<ApplicationDbContext>>().CreateDbContext());
+            services.AddDbContextFactory<ApplicationDbContext>(options =>
+    options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
             services.AddIdentity<ApplicationUser, IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>().AddDefaultTokenProviders()
                 .AddDefaultUI();
@@ -48,6 +53,17 @@ namespace ColleagueRequestManager
             services.AddScoped<IToDoHistoryRepository, ToDoHistoryRepository>();
             services.AddScoped<ContextMenuService>();
             services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+            // 1. Read values from appsettings.json
+            var aiConfig = Configuration.GetSection("AI:Ollama");
+            string endpoint = aiConfig["Endpoint"] ?? "http://localhost:11434";
+            string modelName = aiConfig["Model"] ?? "llama3.2";
+            // 2. Instantiate the concrete client mapping provider
+            var ollamaClient = new OllamaApiClient(new Uri(endpoint), modelName);
+            // 3. Register it using the Microsoft unified AI container
+            services.AddChatClient(ollamaClient);
+            // 4. Register your upcoming custom Chatbot service layer
+            services.AddSingleton<IChatHistoryCache, ChatHistoryCache>();
+            services.AddScoped<IChatBotService, ChatBotService>();
             services.AddScoped<DialogService>();
             services.AddScoped<NotificationService>();
             // Only use Azure SignalR when a connection string is configured (e.g. in Azure)

@@ -1,0 +1,192 @@
+﻿@using Business.Services
+@using global::Models
+@using Microsoft.Extensions.AI
+@inject IChatBotService ChatbotService
+
+<div class="modern-chat-card">
+
+    <div class="modern-chat-header">
+        <div class="modern-chat-avatar">✦</div>
+        <div class="modern-chat-meta">
+            <h2 class="modern-chat-title">AI Assistant</h2>
+            <span class="modern-chat-subtitle">Online · replies instantly</span>
+        </div>
+    </div>
+
+    <div class="modern-chat-body" id="chat-body">
+
+        <div class="modern-msg-bubble modern-msg-ai" style="align-self:center; background:transparent; border:none; box-shadow:none; color:#94a3b8; font-style:italic; font-size:0.82rem;">
+            Ask me anything about the requests.
+        </div>
+
+        @foreach (var msg in _messages)
+        {
+            <div class="modern-msg-bubble @(msg.IsUser ? "modern-msg-user" : "modern-msg-ai")">
+                @msg.Text
+            </div>
+        }
+
+        @if (_isThinking)
+        {
+            <div class="modern-msg-thinking">
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+            </div>
+        }
+
+    </div>
+
+    <div class="modern-chat-footer">
+        <div class="modern-input-group">
+            <input @ref="_chatInputRef"
+                   type="text"
+                   class="modern-input-field"
+                   placeholder="Ask anything…"
+                   @bind="_userInput"
+                   @bind:event="oninput"
+                   @onkeydown="HandleKeyDown"
+                   disabled="@_isThinking" />
+
+            <button class="modern-send-btn"
+                    @onclick="SendMessageAsync"
+                    disabled="@(string.IsNullOrWhiteSpace(_userInput) || _isThinking)"
+                    aria-label="Send">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                </svg>
+                <span>Send</span>
+            </button>
+        </div>
+    </div>
+
+</div>
+
+@code {
+    [Parameter] public string CurrentUsername { get; set; } = "GuestUser";
+    private string _lastKnownUsername = string.Empty;
+
+    // 🎯 Added the ElementReference variable
+    private ElementReference _chatInputRef;
+
+    private string _userInput = string.Empty;
+    private bool _isThinking = false;
+    private List<DisplayMessage> _messages = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // 1. Fetch the raw AI history ONCE when the component loads
+        var rawHistory = await ChatbotService.GetChatHistoryAsync(CurrentUsername);
+
+        // 2. Map only the readable text into your clean UI list
+        _messages = rawHistory
+            .Where(m => m.Role == ChatRole.User || (m.Role == ChatRole.Assistant && !string.IsNullOrWhiteSpace(m.Text)))
+            .Select(m => new DisplayMessage
+            {
+                Text = m.Text,
+                IsUser = m.Role == ChatRole.User
+            })
+            .ToList();
+    }
+
+    // 🎯 Added the OnAfterRenderAsync method to focus when opened
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Brief pause to allow the widget to fully render visually
+            await Task.Delay(50);
+
+            try
+            {
+                await _chatInputRef.FocusAsync();
+            }
+            catch
+            {
+                // Ignore gracefully if the user closes the chat before the 50ms is up
+            }
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_lastKnownUsername != CurrentUsername)
+        {
+            _lastKnownUsername = CurrentUsername;
+
+            // 1. Fetch the correct history for the NEW user (or new anonymous Guid)
+            var rawHistory = await ChatbotService.GetChatHistoryAsync(CurrentUsername);
+
+            // 2. Wipe the old UI and map the new history
+            _messages = rawHistory
+                .Where(m => m.Role == ChatRole.User || (m.Role == ChatRole.Assistant && !string.IsNullOrWhiteSpace(m.Text)))
+                .Select(m => new DisplayMessage
+                {
+                    Text = m.Text,
+                    IsUser = m.Role == ChatRole.User
+                })
+                .ToList();
+
+            // 3. Tell Blazor to instantly redraw the chat window
+            StateHasChanged();
+        }
+    }
+
+    private async Task SendMessageAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_userInput)) return;
+
+        var userText = _userInput;
+        _userInput = string.Empty;
+        _isThinking = true;
+
+        // Immediately add the user's message to the UI list and force a render
+        _messages.Add(new DisplayMessage { Text = userText, IsUser = true });
+        StateHasChanged();
+
+        var requestDto = new global::Models.ChatConversationDtos.ChatRequestDto
+        {
+            UserPrompt = userText,
+            CurrentUsername = CurrentUsername
+        };
+
+        // Dispatch to the backend (where the logic is confirmed working)
+        var responseDto = await ChatbotService.GetChatResponseAsync(requestDto);
+
+        // Explicitly grab the successful AI reply string and push it to the UI
+        if (responseDto.IsSuccess)
+        {
+            _messages.Add(new DisplayMessage { Text = responseDto.AiReply, IsUser = false });
+        }
+        else
+        {
+            _messages.Add(new DisplayMessage { Text = responseDto.ErrorMessage, IsUser = false });
+        }
+
+        _isThinking = false;
+
+        // 🎯 UX Update: Re-render to re-enable the input box, then refocus it automatically
+        StateHasChanged();
+        try
+        {
+            await _chatInputRef.FocusAsync();
+        }
+        catch { }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_userInput) && !_isThinking)
+        {
+            await SendMessageAsync();
+        }
+    }
+
+    private class DisplayMessage
+    {
+        public string Text { get; set; } = string.Empty;
+        public bool IsUser { get; set; }
+    }
+
+
+}

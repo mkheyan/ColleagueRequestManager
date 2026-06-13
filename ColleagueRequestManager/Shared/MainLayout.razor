@@ -1,5 +1,6 @@
 ﻿@using Radzen.Blazor
 @inherits LayoutComponentBase
+@inject AuthenticationStateProvider AuthStateProvider
 
 <RadzenContextMenu />
 
@@ -18,3 +19,45 @@
         </div>
     </div>
 </div>
+
+<div class="floating-chat-container">
+    @if (_isChatOpen)
+    {
+        <div class="chat-window-wrapper">
+            <button class="btn-close-chat" @onclick="ToggleChat">✖</button>
+            <ChatWidget CurrentUsername="@_currentUsername" />
+        </div>
+    }
+
+    <button class="btn-chat-toggle shadow" @onclick="ToggleChat">
+        @(_isChatOpen ? "⬇ Close" : "💬 Ask AI")
+    </button>
+</div>
+
+@code {
+    private bool _isChatOpen = false;
+
+    private string _currentUsername = string.Empty;
+
+    // 4. 🎯 Run this standard lifecycle method to extract the username on load
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity is { IsAuthenticated: true } && !string.IsNullOrWhiteSpace(user.Identity.Name))
+        {
+            _currentUsername = user.Identity.Name;
+        }
+        else
+        {
+            // 🎯 THE FIX: Every unauthenticated browser tab gets its own isolated, unique ID
+            _currentUsername = $"AnonymousSession_{Guid.NewGuid()}";
+        }
+    }
+
+    private void ToggleChat()
+    {
+        _isChatOpen = !_isChatOpen;
+    }
+}

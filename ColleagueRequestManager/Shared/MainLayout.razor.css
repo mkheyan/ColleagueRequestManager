@@ -68,3 +68,78 @@
         padding-right: 1.5rem !important;
     }
 }
+
+/* Container positioned absolute to the viewport viewport */
+.floating-chat-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 9999; /* Ensures it sits on top of all tables, forms, and sidebars */
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+/* Smooth wrapper alignment for the widget box */
+.chat-window-wrapper {
+    position: relative;
+    margin-bottom: 10px;
+    animation: slideUp 0.25s ease-out;
+}
+
+/* Floating Action Button (FAB) Styling */
+.btn-chat-toggle {
+    background-color: #0d6efd; /* BootStrap Primary Blue */
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 50px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.2s, background-color 0.2s;
+}
+
+    .btn-chat-toggle:hover {
+        background-color: #0b5ed7;
+        transform: scale(1.05);
+    }
+
+/* --- Modern Close Button Positioning --- */
+.btn-close-chat {
+    position: absolute;
+    /* 🎯 Lowered from 14px to 20px, and nudged left from 18px to 20px */
+    top: 20px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    color: #ffffff;
+    font-size: 1.1rem;
+    line-height: 1;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+    transition: background 0.2s ease, transform 0.1s ease;
+}
+
+    .btn-close-chat:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: scale(1.05);
+    }
+
+/* Subtle opening pop animation */
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
