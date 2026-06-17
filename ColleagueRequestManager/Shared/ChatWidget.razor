@@ -64,6 +64,7 @@
 
 @code {
     [Parameter] public string CurrentUsername { get; set; } = "GuestUser";
+    [Parameter] public string CurrentUserId { get; set; } = string.Empty;
     private string _lastKnownUsername = string.Empty;
 
     // 🎯 Added the ElementReference variable
@@ -151,7 +152,7 @@
         };
 
         // Dispatch to the backend (where the logic is confirmed working)
-        var responseDto = await ChatbotService.GetChatResponseAsync(requestDto);
+        var responseDto = await ChatbotService.GetChatResponseAsync(requestDto, CurrentUserId);
 
         // Explicitly grab the successful AI reply string and push it to the UI
         if (responseDto.IsSuccess)

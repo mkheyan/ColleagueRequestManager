@@ -10,6 +10,7 @@ namespace Models
         {
             public string UserPrompt { get; set; } = string.Empty;
             public string CurrentUsername { get; set; } = string.Empty;
+            public string CurrentUserID { get; set; } = string.Empty;
         }
 
         // Sent from the Business Layer back to the Blazor View

@@ -38,6 +38,7 @@ namespace Business.Services
             _historyCache = historyCache;
         }
 
+        ////needs to be refactored to work with userId
         public Task<List<ChatMessage>> GetChatHistoryAsync(string username)
         {
 
@@ -68,11 +69,11 @@ namespace Business.Services
                    $"Full Description: {request.Description}\n";
         }
 
-        private async Task<string> SearchRequestsAsync(string searchTerm, string currentUsername)
+        private async Task<string> SearchRequestsAsync(string searchTerm, string currentUserId)
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(currentUsername) || currentUsername.StartsWith("Anonymous", StringComparison.OrdinalIgnoreCase))
+                if (string.IsNullOrWhiteSpace(currentUserId))
                 {
                     return "No portal requests found. User is unauthenticated.";
                 }
@@ -81,7 +82,7 @@ namespace Business.Services
                 // -----------------------------------------------------------------
                 // 1. DIAGNOSTIC SAFETY CHECK
                 // -----------------------------------------------------------------
-                int totalCount = await context.ToDoItems.CountAsync();
+                int totalCount = await context.ToDoItems.Where(r=>r.CreatorId == currentUserId || r.AssigneeId == currentUserId).CountAsync();
                 if (totalCount == 0)
                 {
                     return "SYSTEM NOTIFICATION: The database table 'ToDoItems' is entirely empty (0 rows). " +
@@ -104,7 +105,12 @@ namespace Business.Services
                 // 3. BASE QUERY INITIALIZATION (Eager Loading)
                 // -----------------------------------------------------------------
                 // We explicitly .Include(r => r.Creator) to prevent NullReferenceExceptions when reading user profiles
-                var query = context.ToDoItems.Include(r => r.Creator).AsQueryable();
+                var query = context.ToDoItems
+        .Include(r => r.Creator)
+        .Include(r => r.Assignee)
+        .Include(r => r.Responses)
+        .Where(r => !r.IsDeleted)
+        .Where(r => r.CreatorId == currentUserId || r.AssigneeId == currentUserId);
 
                 // -----------------------------------------------------------------
                 // 4. INTELLIGENT ID EXTRACTION (Regex)
@@ -114,6 +120,8 @@ namespace Business.Services
                 if (numericMatch.Success && int.TryParse(numericMatch.Value, out int extractedId))
                 {
                     var item = await query.FirstOrDefaultAsync(r => r.Id == extractedId);
+
+
                     if (item != null)
                     {
                         string creatorName = item.Creator != null ? $"{item.Creator.FirstName} {item.Creator.LastName}" : "System/Unknown";
@@ -123,17 +131,35 @@ namespace Business.Services
                         // 🎯 Added clear visibility for the Due/Completion date to prevent AI hallucination
                         string necessaryCompletionDateStr = item.NecessaryCompletionDate != default ? item.NecessaryCompletionDate.ToString("yyyy-MM-dd") : "No specific deadline set";
                         string description = item.Description ?? "No description available.";
+                        string responsesSummary = item.Responses != null && item.Responses.Any()
+    ? $"{item.Responses.Count} response(s)"
+    : "No responses";
+
+
+                        // Detect response-specific intent
+                bool wantsResponses = cleanTerm.Contains("response") || cleanTerm.Contains("responses") || cleanTerm.Contains("replies") || cleanTerm.Contains("comments");
+
+                if (wantsResponses && item.Responses.Count()>0)
+                {
+                    
+                    string fullThread = string.Join("\n", item.Responses
+                        .OrderBy(r => r.CreationDate)
+                        .Select(r => $"  - [{r.CreationDate:yyyy-MM-dd}] {r.Responder.UserName}: {r.ResponseText}"));
+
+                    return $"[RESPONSES FOR REQUEST ID {item.Id}]:\n{fullThread}";
+                }
 
                         return $"[FOUND MATCH FOR REQUEST ID {extractedId}]:\n" +
-                               $"[ID: {item.Id}] Created By: {creatorName} | Status: {status} | Created Date: {dateStr} | Necessary Completion Date: {necessaryCompletionDateStr} | Description: {description}";
+                               $"[ID: {item.Id}] Created By: {creatorName} | Status: {status} | Created Date: {dateStr} | Necessary Completion Date: {necessaryCompletionDateStr} | Description: {description} | Responses: {responsesSummary}";
                     }
-                    return $"Database lookup executed: Request ID {extractedId} does not exist in our records.";
+                    return $"Request ID {extractedId} was not found or you do not have access to it.";
                 }
 
                 // -----------------------------------------------------------------
                 // 5. OWNERSHIP CONTEXT FILTER
                 // -----------------------------------------------------------------
                 // Detects if the user wants to narrow data down to their own person
+                /*
                 bool isUserSpecific = cleanTerm.Contains("my") || cleanTerm.Contains("me") ||
                                      cleanTerm.Contains("creator") || cleanTerm.Contains("assignee");
 
@@ -141,10 +167,9 @@ namespace Business.Services
                 {
                     // Fallback strategy: cross-checks username or first name strings safely
                     query = query.Where(r => r.Creator != null &&
-                        (r.Creator.UserName.ToLower() == currentUsername.ToLower() ||
-                         r.Creator.FirstName.ToLower().Contains(currentUsername.ToLower())));
+                        (r.Creator.Id == currentUserId ));
                 }
-
+                */
                 // -----------------------------------------------------------------
                 // 6. OPERATIONAL NOISE STRIPPING
                 // -----------------------------------------------------------------
@@ -171,12 +196,13 @@ namespace Business.Services
                 // Pull the top 10 most recent records to prevent payload bloating
                 var results = await query.OrderByDescending(r => r.Id).Take(10).ToListAsync();
 
-                if (!results.Any())
+                /*if (!results.Any())
                 {
                     return isUserSpecific
-                        ? $"No active portal requests were found under your user identity profile ('{currentUsername}')."
+                        ? $"No active portal requests were found under your user identity profile ('{context.ApplicationUser.Where(u => u.Id == currentUserId)}')."
                         : $"No database logs found matching the keyword filters: '{trueKeywords}'.";
-                }
+                }*/
+
 
                 // Format data into a clean, deterministic textual summary string that the LLM can cleanly process
                 return $"[DATABASE SNAPSHOT - FOUND {results.Count} MATCHES]:\n" +
@@ -201,7 +227,7 @@ namespace Business.Services
             }
         }
 
-        public async Task<ChatConversationDtos.ChatResponseDto> GetChatResponseAsync(ChatConversationDtos.ChatRequestDto request)
+        public async Task<ChatConversationDtos.ChatResponseDto> GetChatResponseAsync(ChatConversationDtos.ChatRequestDto request, string currentUserId)
         {
             if (string.IsNullOrWhiteSpace(request.UserPrompt))
             {
@@ -225,7 +251,7 @@ namespace Business.Services
                 var executionMessages = new List<ChatMessage>();
 
                 // 🎯 THE BALANCED SYSTEM PROMPT: Teaches the AI common sense
-                var systemInstruction = """You are a smart, natural, human-like AI Assistant for the Colleague Request portal. CHITCHAT vs DATA RULES:1. SMALL TALK & GREETINGS: If the user says hello, asks how you are doing, says "good", "no", or chats casually, reply naturally as a friendly coworker. DO NOT run database tools for casual chatter, and DO NOT mention portal requests or "sales enablement plans" unless specifically asked.2. CONTEXTUAL AWARENESS: If the user answers a follow-up question (like saying "yes" or "sure"), look at the previous message in the history to understand what they are agreeing to. 3. DATA SEARCH: Only rely on your SearchRequests tool when the user explicitly asks to find, list, look up, or check a portal request, ID, or task.4. ABSOLUTE SILENCE ON MECHANICS: Never mention the name of your tools, functions, parameters, JSON, or code. Speak only in fluid, natural prose sentences.5. IF NO DATA FOUND: If a database search yields no records, simply say: "I couldn't find any portal requests matching that information." Do not guess or make up data.""";
+                var systemInstruction = """You are a smart, natural, human-like AI Assistant for the Colleague Request portal. CHITCHAT vs DATA RULES:1. SMALL TALK & GREETINGS: If the user says hello, asks how you are doing, says "good", "no", or chats casually, reply naturally as a friendly coworker. DO NOT run database tools for casual chatter, and DO NOT mention portal requests or "sales enablement plans" unless specifically asked.2. CONTEXTUAL AWARENESS: If the user answers a follow-up question (like saying "yes" or "sure"), look at the previous message in the history to understand what they are agreeing to. 3. DATA SEARCH: Only rely on your SearchRequests tool when the user explicitly asks to find, list, look up, or check a portal request, ID, or task.4. ABSOLUTE SILENCE ON MECHANICS: Never mention the name of your tools, functions, parameters, JSON, or code. Speak only in fluid, natural prose sentences.5. IF NO DATA FOUND: If a database search yields no records, simply say: "I couldn't find any portal requests matching that information." Do not guess or make up data. 6. TOOL INPUT DISCIPLINE: When calling SearchRequests, the searchTerm parameter must only contain a short keyword or ID taken directly from the user's message. Never pass your own reply text or full sentences as a tool parameter.""";
 
                 executionMessages.Add(new ChatMessage(ChatRole.System, systemInstruction));
 
@@ -242,8 +268,8 @@ namespace Business.Services
 
                 // Define your data access tool mapping
                 var searchTool = AIFunctionFactory.Create(
-                    ([Description("The keyword, ID, or phrase to filter requests by. Pass an empty string if the user wants to list all, everything, or recent requests.")] string searchTerm) =>
-                        SearchRequestsAsync(searchTerm, request.CurrentUsername),
+                    ([Description("A short keyword or numeric ID extracted directly from the user's message. Examples: 'sales', '42', 'urgent'. Pass an empty string to list all. NEVER pass full sentences, AI-generated text, or your own reply text.")] string searchTerm) =>
+                        SearchRequestsAsync(searchTerm, currentUserId),
                     name: "SearchRequests",
                     description: "Queries the portal database for requests. Automatically handles search keywords, specific request IDs, or requests belonging to the current user."
                 );

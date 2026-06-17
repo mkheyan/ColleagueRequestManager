@@ -1,4 +1,6 @@
 ﻿@using Radzen.Blazor
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
 @inherits LayoutComponentBase
 @inject AuthenticationStateProvider AuthStateProvider
 
@@ -25,7 +27,7 @@
     {
         <div class="chat-window-wrapper">
             <button class="btn-close-chat" @onclick="ToggleChat">✖</button>
-            <ChatWidget CurrentUsername="@_currentUsername" />
+            <ChatWidget CurrentUsername="@_currentUsername" CurrentUserId="@_currentUserId"/>
         </div>
     }
 
@@ -38,6 +40,7 @@
     private bool _isChatOpen = false;
 
     private string _currentUsername = string.Empty;
+    private string _currentUserId = string.Empty;
 
     // 4. 🎯 Run this standard lifecycle method to extract the username on load
     protected override async Task OnInitializedAsync()
@@ -48,6 +51,7 @@
         if (user.Identity is { IsAuthenticated: true } && !string.IsNullOrWhiteSpace(user.Identity.Name))
         {
             _currentUsername = user.Identity.Name;
+            _currentUserId = user.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
         }
         else
         {
