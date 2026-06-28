@@ -82,6 +82,7 @@ namespace ColleagueRequestManager
                 // Local or non-Azure hosting: use in-memory SignalR
                 services.AddSignalR();
             }
+            services.AddHttpClient();
             services.AddRazorPages();
             services.AddServerSideBlazor();
         }

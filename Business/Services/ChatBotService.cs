@@ -1,15 +1,20 @@
 ﻿using DataAccess;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Configuration;
 using Microsoft.VisualBasic;
 using Models;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Json;
 using System.Reflection.PortableExecutable;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using static Models.ChatConversationDtos;
 using static System.Runtime.InteropServices.JavaScript.JSType;
@@ -21,13 +26,19 @@ namespace Business.Services
         private readonly IChatClient _baseChatClient;
         private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
         private readonly IChatHistoryCache _historyCache;
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly string _ollamaEndpoint;
+        private readonly string _ollamaModel;
+        private readonly string _ollamaClassifierModel;
 
         // 🎯 Note: The local _chatHistory list has been removed entirely to stop state tracking leaks!
 
         public ChatBotService(
             IChatClient chatClient,
             IDbContextFactory<ApplicationDbContext> contextFactory,
-            IChatHistoryCache historyCache)
+            IChatHistoryCache historyCache,
+            IHttpClientFactory httpClientFactory,
+            IConfiguration configuration)
         {
             // 1. Keep the base client clean. We will build the function pipeline dynamically inside the method.
             _baseChatClient = chatClient;
@@ -36,6 +47,17 @@ namespace Business.Services
             _contextFactory = contextFactory;
 
             _historyCache = historyCache;
+            _httpClientFactory = httpClientFactory;
+            _ollamaEndpoint = configuration["AI:Ollama:Endpoint"] ?? "http://localhost:11434";
+            _ollamaModel = configuration["AI:Ollama:Model"] ?? "qwen3.5:4b";
+            _ollamaClassifierModel = configuration["AI:Ollama:ClassifierModel"] ?? _ollamaModel;
+        }
+
+        private class IntentResult
+        {
+            public string Intent { get; set; } = "search_requests";
+            public int? Id { get; set; }
+            public string? Keywords { get; set; }
         }
 
         ////needs to be refactored to work with userId
@@ -71,160 +93,190 @@ namespace Business.Services
 
         private async Task<string> SearchRequestsAsync(string searchTerm, string currentUserId)
         {
+            if (string.IsNullOrWhiteSpace(currentUserId))
+                return "No portal requests found. User is unauthenticated.";
+
+            // 1. Classify intent via Ollama
+            IntentResult intent = await ClassifyIntentAsync(searchTerm);
+
+            using var context = await _contextFactory.CreateDbContextAsync();
+
+            // 2. Always-scoped base query
+            var query = context.ToDoItems
+                .Include(r => r.Creator)
+                .Include(r => r.Assignee)
+                .Include(r => r.Responses)
+                    .ThenInclude(r => r.Responder)
+                .Where(r => !r.IsDeleted)
+                .Where(r => r.CreatorId == currentUserId || r.AssigneeId == currentUserId);
+
+            // 3. Scoped count check
+            if (!await query.AnyAsync())
+                return "You currently have no portal requests assigned to or created by you.";
+
+            switch (intent.Intent)
+            {
+                case "small_talk":
+                    return "SMALL_TALK";
+
+                case "view_responses":
+                    {
+                        if (intent.Id == null)
+                            return "Please specify a request ID to view its responses.";
+
+                        var item = await query.FirstOrDefaultAsync(r => r.Id == intent.Id);
+                        if (item == null)
+                            return $"Request ID {intent.Id} was not found or you do not have access to it.";
+                        if (!item.Responses.Any())
+                            return $"Request ID {intent.Id} has no responses yet.";
+
+                        string thread = string.Join("\n", item.Responses
+                            .OrderBy(r => r.CreationDate)
+                            .Select(r => $"  - [{r.CreationDate:yyyy-MM-dd}] {r.Responder?.UserName}: {r.ResponseText}"));
+
+                        return $"[RESPONSES FOR REQUEST ID {intent.Id}]:\n{thread}";
+                    }
+
+                case "view_item":
+                    {
+                        if (intent.Id == null)
+                            return "Please specify a request ID.";
+
+                        var item = await query.FirstOrDefaultAsync(r => r.Id == intent.Id);
+                        if (item == null)
+                            return $"Request ID {intent.Id} was not found or you do not have access to it.";
+
+                        return FormatSingleItem(item);
+                    }
+
+                case "search_requests":
+                default:
+                    {
+                        if (!string.IsNullOrWhiteSpace(intent.Keywords))
+                        {
+                            string kw = intent.Keywords.ToLower();
+                            query = query.Where(r =>
+                                (r.Description != null && r.Description.ToLower().Contains(kw)) ||
+                                (r.Creator != null && (r.Creator.FirstName + " " + r.Creator.LastName).ToLower().Contains(kw)));
+                        }
+
+                        var results = await query.OrderByDescending(r => r.Id).Take(10).ToListAsync();
+
+                        if (!results.Any())
+                            return string.IsNullOrWhiteSpace(intent.Keywords)
+                                ? "No portal requests found in your accessible records."
+                                : $"No records matching '{intent.Keywords}' were found in your accessible requests.";
+
+                        return $"[DATABASE SNAPSHOT - FOUND {results.Count} MATCHES]:\n" +
+                               string.Join("\n", results.Select(i =>
+                               {
+                                   string creator = i.Creator != null ? $"{i.Creator.FirstName} {i.Creator.LastName}" : "Unknown";
+                                   string status = i.IsComplete ? "Completed" : "In Progress";
+                                   string created = i.CreationDate != default ? i.CreationDate.ToString("yyyy-MM-dd") : "Not Set";
+                                   string due = i.NecessaryCompletionDate != default ? i.NecessaryCompletionDate.ToString("yyyy-MM-dd") : "No Deadline";
+                                   string desc = i.Description ?? "No description provided.";
+                                   string responses = i.Responses?.Any() == true ? $"{i.Responses.Count} response(s)" : "No responses";
+
+                                   return $"[ID: {i.Id}] From: {creator} | Status: {status} | Created: {created} | Due: {due} | Description: {desc} | Responses: {responses}";
+                               }));
+                    }
+            }
+        }
+
+        private async Task<IntentResult> ClassifyIntentAsync(string userMessage)
+        {
+            if (string.IsNullOrWhiteSpace(userMessage))
+                return new IntentResult { Intent = "search_requests" };
+
+            if (Regex.IsMatch(userMessage.Trim(), @"^\d+$"))
+                return new IntentResult { Intent = "view_item", Id = int.Parse(userMessage.Trim()) };
+
+            return await CallOllamaClassifierAsync(userMessage);
+        }
+
+        private async Task<IntentResult> CallOllamaClassifierAsync(string userMessage)
+        {
             try
             {
-                if (string.IsNullOrWhiteSpace(currentUserId))
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                var httpClient = _httpClientFactory.CreateClient("OllamaClient");
+
+                var payload = new
                 {
-                    return "No portal requests found. User is unauthenticated.";
-                }
-
-                using var context = await _contextFactory.CreateDbContextAsync();
-                // -----------------------------------------------------------------
-                // 1. DIAGNOSTIC SAFETY CHECK
-                // -----------------------------------------------------------------
-                int totalCount = await context.ToDoItems.Where(r=>r.CreatorId == currentUserId || r.AssigneeId == currentUserId).CountAsync();
-                if (totalCount == 0)
-                {
-                    return "SYSTEM NOTIFICATION: The database table 'ToDoItems' is entirely empty (0 rows). " +
-                           "Inform the user that no records exist in the system yet, so no results can be displayed.";
-                }
-
-                // -----------------------------------------------------------------
-                // 2. CHAT PASS-THROUGH GUARD
-                // -----------------------------------------------------------------
-                string cleanTerm = (searchTerm ?? string.Empty).Trim().ToLower();
-                string[] casualWords = { "hi", "hello", "hey", "good morning", "how are you", "yes", "no", "good", "thanks", "ok" };
-
-                if (casualWords.Contains(cleanTerm))
-                {
-                    return "The user is engaging in conversational small talk or a basic acknowledgement. " +
-                           "Ignore database processing and respond warmly in natural language.";
-                }
-
-                // -----------------------------------------------------------------
-                // 3. BASE QUERY INITIALIZATION (Eager Loading)
-                // -----------------------------------------------------------------
-                // We explicitly .Include(r => r.Creator) to prevent NullReferenceExceptions when reading user profiles
-                var query = context.ToDoItems
-        .Include(r => r.Creator)
-        .Include(r => r.Assignee)
-        .Include(r => r.Responses)
-        .Where(r => !r.IsDeleted)
-        .Where(r => r.CreatorId == currentUserId || r.AssigneeId == currentUserId);
-
-                // -----------------------------------------------------------------
-                // 4. INTELLIGENT ID EXTRACTION (Regex)
-                // -----------------------------------------------------------------
-                // Pulls numbers cleanly out of prompts like "request id 1", "show item 12", or just "1"
-                var numericMatch = Regex.Match(cleanTerm, @"\d+");
-                if (numericMatch.Success && int.TryParse(numericMatch.Value, out int extractedId))
-                {
-                    var item = await query.FirstOrDefaultAsync(r => r.Id == extractedId);
-
-
-                    if (item != null)
+                    model = _ollamaClassifierModel,
+                    stream = false,
+                    keep_alive = "30m",
+                    num_predict = 50,
+                    messages = new[]
                     {
-                        string creatorName = item.Creator != null ? $"{item.Creator.FirstName} {item.Creator.LastName}" : "System/Unknown";
-                        string status = item.IsComplete ? "Completed" : "In Progress";
-                        string dateStr = item.CreationDate != default ? item.CreationDate.ToString("yyyy-MM-dd") : "Not Set";
-
-                        // 🎯 Added clear visibility for the Due/Completion date to prevent AI hallucination
-                        string necessaryCompletionDateStr = item.NecessaryCompletionDate != default ? item.NecessaryCompletionDate.ToString("yyyy-MM-dd") : "No specific deadline set";
-                        string description = item.Description ?? "No description available.";
-                        string responsesSummary = item.Responses != null && item.Responses.Any()
-    ? $"{item.Responses.Count} response(s)"
-    : "No responses";
-
-
-                        // Detect response-specific intent
-                bool wantsResponses = cleanTerm.Contains("response") || cleanTerm.Contains("responses") || cleanTerm.Contains("replies") || cleanTerm.Contains("comments");
-
-                if (wantsResponses && item.Responses.Count()>0)
+                new
                 {
-                    
-                    string fullThread = string.Join("\n", item.Responses
-                        .OrderBy(r => r.CreationDate)
-                        .Select(r => $"  - [{r.CreationDate:yyyy-MM-dd}] {r.Responder.UserName}: {r.ResponseText}"));
+                    role = "system",
+                    content = """
+                        Classify the user message and respond with ONLY a raw JSON object. No markdown, no explanation, no backticks.
 
-                    return $"[RESPONSES FOR REQUEST ID {item.Id}]:\n{fullThread}";
-                }
+                        Intents:
+                        - "view_item"       — user wants details of a specific request by ID
+                        - "view_responses"  — user wants to see replies, comments, feedback, or responses on a specific request
+                        - "search_requests" — user wants to list, find, browse, or retrieve requests (including "all", "available", "recent", "everything", "give me", etc.)
+                        - "small_talk"      — greeting, casual conversation, or anything unrelated to portal requests
 
-                        return $"[FOUND MATCH FOR REQUEST ID {extractedId}]:\n" +
-                               $"[ID: {item.Id}] Created By: {creatorName} | Status: {status} | Created Date: {dateStr} | Necessary Completion Date: {necessaryCompletionDateStr} | Description: {description} | Responses: {responsesSummary}";
-                    }
-                    return $"Request ID {extractedId} was not found or you do not have access to it.";
-                }
+                        Rules:
+                        - Extract "id" as an integer if a specific request number is mentioned, otherwise omit it.
+                        - Extract "keywords" as a short string ONLY if the user is filtering by a specific topic or description (e.g. "sales", "urgent"). Omit for generic words like "all", "list", "show", "available", "everything", "my", "recent".
+                        - When in doubt between search_requests and small_talk, prefer search_requests.
+                        - When in doubt between view_item and search_requests and no clear ID exists, prefer search_requests.
 
-                // -----------------------------------------------------------------
-                // 5. OWNERSHIP CONTEXT FILTER
-                // -----------------------------------------------------------------
-                // Detects if the user wants to narrow data down to their own person
-                /*
-                bool isUserSpecific = cleanTerm.Contains("my") || cleanTerm.Contains("me") ||
-                                     cleanTerm.Contains("creator") || cleanTerm.Contains("assignee");
-
-                if (isUserSpecific)
-                {
-                    // Fallback strategy: cross-checks username or first name strings safely
-                    query = query.Where(r => r.Creator != null &&
-                        (r.Creator.Id == currentUserId ));
-                }
-                */
-                // -----------------------------------------------------------------
-                // 6. OPERATIONAL NOISE STRIPPING
-                // -----------------------------------------------------------------
-                // Strips out generic structural sentences so we extract the actual keyword intent (e.g., "sales")
-                string trueKeywords = cleanTerm
-                    .Replace("list all", "").Replace("list available", "").Replace("available requests", "")
-                    .Replace("list", "").Replace("show", "").Replace("find", "").Replace("all", "")
-                    .Replace("requests", "").Replace("request", "").Replace("where i am the creator", "")
-                    .Replace("my", "").Replace("me", "")
-                    .Trim();
-
-                // If there are true keywords left after cleaning, apply wild-card phrase matching
-                if (!string.IsNullOrWhiteSpace(trueKeywords))
-                {
-                    query = query.Where(r =>
-                        (r.Description != null && r.Description.ToLower().Contains(trueKeywords)) ||
-                        (r.Creator != null && (r.Creator.FirstName + " " + r.Creator.LastName).ToLower().Contains(trueKeywords))
-                    );
-                }
-
-                // -----------------------------------------------------------------
-                // 7. RECORD MATERIALIZATION & NULL-SAFE OUTPUT
-                // -----------------------------------------------------------------
-                // Pull the top 10 most recent records to prevent payload bloating
-                var results = await query.OrderByDescending(r => r.Id).Take(10).ToListAsync();
-
-                /*if (!results.Any())
-                {
-                    return isUserSpecific
-                        ? $"No active portal requests were found under your user identity profile ('{context.ApplicationUser.Where(u => u.Id == currentUserId)}')."
-                        : $"No database logs found matching the keyword filters: '{trueKeywords}'.";
-                }*/
-
-
-                // Format data into a clean, deterministic textual summary string that the LLM can cleanly process
-                return $"[DATABASE SNAPSHOT - FOUND {results.Count} MATCHES]:\n" +
-                       string.Join("\n", results.Select(i =>
-                       {
-                           string firstName = i.Creator?.FirstName ?? "Unknown";
-                           string lastName = i.Creator?.LastName ?? "User";
-                           string status = i.IsComplete ? "Completed" : "In Progress";
-                           string createdDate = i.CreationDate != default ? i.CreationDate.ToString("yyyy-MM-dd") : "Not Set";
-
-                           // 🎯 Maintained here inside the collection mapping for open lists
-                           string necessaryCompletionDate = i.NecessaryCompletionDate != default ? i.NecessaryCompletionDate.ToString("yyyy-MM-dd") : "No Deadline";
-                           string description = i.Description ?? "No description provided.";
-
-                           return $"[ID: {i.Id}] From: {firstName} {lastName} | Status: {status} | Created: {createdDate} | Due: {necessaryCompletionDate} | Description: {description}";
-                       }));
+                        Examples:
+                        "show request 5"                        → {"intent":"view_item","id":5}
+                        "what is in request 12"                 → {"intent":"view_item","id":12}
+                        "replies on 3"                          → {"intent":"view_responses","id":3}
+                        "any feedback on request 7"             → {"intent":"view_responses","id":7}
+                        "show responses for ticket 2"           → {"intent":"view_responses","id":2}
+                        "list all requests"                     → {"intent":"search_requests"}
+                        "give available requests"               → {"intent":"search_requests"}
+                        "show everything"                       → {"intent":"search_requests"}
+                        "find sales requests"                   → {"intent":"search_requests","keywords":"sales"}
+                        "show my urgent items"                  → {"intent":"search_requests","keywords":"urgent"}
+                        "list all requests in a structured way" → {"intent":"search_requests"}
+                        "hello"                                 → {"intent":"small_talk"}
+                        "how are you"                           → {"intent":"small_talk"}
+                    """
+                },
+                new { role = "user", content = userMessage }
             }
-            catch (Exception ex)
+                };
+
+                var response = await httpClient.PostAsJsonAsync(
+                    $"{_ollamaEndpoint}/api/chat", payload, cts.Token);
+
+                var data = await response.Content.ReadFromJsonAsync<JsonElement>(
+                    cancellationToken: cts.Token);
+
+                string raw = data.GetProperty("message").GetProperty("content").GetString() ?? "{}";
+                raw = Regex.Replace(raw, @"```json|```", "").Trim();
+
+                return JsonSerializer.Deserialize<IntentResult>(raw, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                }) ?? new IntentResult();
+            }
+            catch
             {
-                // Forwards the detailed runtime issue directly to the LLM context rather than throwing silently
-                return $"INTERNAL DATABASE TOOL ERROR: {ex.Message}. Check inner stack trace configuration loops.";
+                return new IntentResult { Intent = "search_requests" };
             }
+        }
+
+        private static string FormatSingleItem(ToDoItem item)
+        {
+            string creator = item.Creator != null ? $"{item.Creator.FirstName} {item.Creator.LastName}" : "System/Unknown";
+            string status = item.IsComplete ? "Completed" : "In Progress";
+            string created = item.CreationDate != default ? item.CreationDate.ToString("yyyy-MM-dd") : "Not Set";
+            string due = item.NecessaryCompletionDate != default ? item.NecessaryCompletionDate.ToString("yyyy-MM-dd") : "No specific deadline set";
+            string desc = item.Description ?? "No description available.";
+            string responses = item.Responses?.Any() == true ? $"{item.Responses.Count} response(s)" : "No responses";
+
+            return $"[ID: {item.Id}] Created By: {creator} | Status: {status} | Created: {created} | Due: {due} | Description: {desc} | Responses: {responses}";
         }
 
         public async Task<ChatConversationDtos.ChatResponseDto> GetChatResponseAsync(ChatConversationDtos.ChatRequestDto request, string currentUserId)
@@ -250,8 +302,31 @@ namespace Business.Services
 
                 var executionMessages = new List<ChatMessage>();
 
-                // 🎯 THE BALANCED SYSTEM PROMPT: Teaches the AI common sense
-                var systemInstruction = """You are a smart, natural, human-like AI Assistant for the Colleague Request portal. CHITCHAT vs DATA RULES:1. SMALL TALK & GREETINGS: If the user says hello, asks how you are doing, says "good", "no", or chats casually, reply naturally as a friendly coworker. DO NOT run database tools for casual chatter, and DO NOT mention portal requests or "sales enablement plans" unless specifically asked.2. CONTEXTUAL AWARENESS: If the user answers a follow-up question (like saying "yes" or "sure"), look at the previous message in the history to understand what they are agreeing to. 3. DATA SEARCH: Only rely on your SearchRequests tool when the user explicitly asks to find, list, look up, or check a portal request, ID, or task.4. ABSOLUTE SILENCE ON MECHANICS: Never mention the name of your tools, functions, parameters, JSON, or code. Speak only in fluid, natural prose sentences.5. IF NO DATA FOUND: If a database search yields no records, simply say: "I couldn't find any portal requests matching that information." Do not guess or make up data. 6. TOOL INPUT DISCIPLINE: When calling SearchRequests, the searchTerm parameter must only contain a short keyword or ID taken directly from the user's message. Never pass your own reply text or full sentences as a tool parameter.""";
+                var systemInstruction = """
+    You are a smart, natural, human-like AI Assistant for the Colleague Request portal.
+
+    CHITCHAT vs DATA RULES:
+    1. SMALL TALK & GREETINGS: If the user says hello, asks how you are doing, or chats casually, reply naturally as a friendly coworker. Do NOT run database tools for casual chatter, and do NOT mention portal requests unless specifically asked.
+    2. CONTEXTUAL AWARENESS: If the user answers a follow-up question (like "yes" or "sure"), look at the previous message in the history to understand what they are agreeing to before taking any action.
+    3. DATA SEARCH: Only call SearchRequests when the user explicitly asks to find, list, look up, or check a portal request, ID, or task.
+    4. ABSOLUTE SILENCE ON MECHANICS: Never mention tool names, functions, parameters, JSON, or code. Speak only in fluid, natural prose.
+    5. IF NO DATA FOUND: Simply say "I couldn't find any portal requests matching that information." Never guess or invent data.
+    6. TOOL INPUT DISCIPLINE: When calling SearchRequests, the searchTerm must only contain a short keyword or ID taken directly from the user's message. Never pass your own reply text or full sentences as a tool parameter.
+
+    DATA PRESENTATION:
+    7. When you receive database results, present them in whatever format best matches what the user asked for:
+       - "structured", "organized", "formatted" → present each request as a clear block with each field on its own line, separated visually.
+       - "summary" or "overview" → write a short prose summary of the results.
+       - "table" → present as a markdown table.
+       - Casual request (e.g. "show me my requests") → clean readable list, one request per entry.
+    8. Never blend multiple records into a single paragraph — always keep each request visually distinct.
+    9. Always match your tone and format to what the user asked for, using your own judgement.
+
+    HONESTY & ACCURACY:
+    10. You only know what is returned to you from the database or what the user tells you in this conversation. Do not invent, assume, or fill in any details that were not explicitly provided.
+    11. If you are unsure about something, say so honestly rather than making something up.
+    12. Never reference information from previous conversations or sessions — you only have access to the current conversation and what the database returns.
+""";
 
                 executionMessages.Add(new ChatMessage(ChatRole.System, systemInstruction));
 
@@ -266,12 +341,13 @@ namespace Business.Services
 
                 executionMessages.Add(new ChatMessage(ChatRole.User, request.UserPrompt));
 
-                // Define your data access tool mapping
+                string capturedUserPrompt = request.UserPrompt; // capture before the lambda
+
                 var searchTool = AIFunctionFactory.Create(
-                    ([Description("A short keyword or numeric ID extracted directly from the user's message. Examples: 'sales', '42', 'urgent'. Pass an empty string to list all. NEVER pass full sentences, AI-generated text, or your own reply text.")] string searchTerm) =>
-                        SearchRequestsAsync(searchTerm, currentUserId),
+                    ([Description("Pass an empty string. The system handles intent automatically.")] string searchTerm) =>
+                        SearchRequestsAsync(capturedUserPrompt, currentUserId), // always use the captured prompt
                     name: "SearchRequests",
-                    description: "Queries the portal database for requests. Automatically handles search keywords, specific request IDs, or requests belonging to the current user."
+                    description: "Queries the portal database for portal requests belonging to the current user."
                 );
 
                 var options = new ChatOptions
